@@ -6,7 +6,7 @@ import { Profile, Article } from '@/types/database';
 import { getStoredProfiles, getStoredArticles, fetchProfilesFromSupabase, fetchArticlesFromSupabase, recordProfileView } from '@/lib/data-store';
 import { createClient } from '@/lib/supabase/client';
 import { getCloudinaryImageUrl } from '@/lib/cloudinary';
-import { extractYouTubeId, decodeHtmlEntities, isEligibleForArticleOfTheDay, translateTextToEnglish } from '@/lib/url-normalizer';
+import { extractYouTubeId, decodeHtmlEntities, isEligibleForArticleOfTheDay, translateTextToEnglish, compareByFrontNumber } from '@/lib/url-normalizer';
 import { SocialLinks } from '@/components/public/social-links';
 import { ArticleCard } from '@/components/public/article-card';
 import { SubmitModal } from '@/components/public/submit-modal';
@@ -137,7 +137,7 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
       }
       const localArticles = getStoredArticles()
         .filter(a => a.profile_id === localMatch.id && a.status === 'published')
-        .sort((a, b) => a.display_order - b.display_order);
+        .sort((a, b) => a.display_order !== b.display_order ? a.display_order - b.display_order : compareByFrontNumber(a.title, b.title, 'asc'));
       setArticles(localArticles);
     }
 
@@ -161,7 +161,7 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
         const fetchedArticles = await fetchArticlesFromSupabase();
         const profileArts = fetchedArticles
           .filter(a => a.profile_id === supabaseMatch.id && a.status === 'published')
-          .sort((a, b) => a.display_order - b.display_order);
+          .sort((a, b) => a.display_order !== b.display_order ? a.display_order - b.display_order : compareByFrontNumber(a.title, b.title, 'asc'));
         setArticles(profileArts);
       }
     } catch {

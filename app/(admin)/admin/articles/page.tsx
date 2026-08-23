@@ -5,10 +5,10 @@ import { createPortal } from 'react-dom';
 import { useAdminWorkspace } from '../layout';
 import { Article, ExtractedMetadata } from '@/types/database';
 import { getStoredArticles, saveArticles, saveArticleToSupabase, updateArticleStatusInSupabase, updateArticlesOrderInSupabase, deleteArticleFromSupabase, generateUUID } from '@/lib/data-store';
-import { normalizeUrl, decodeHtmlEntities, isEligibleForArticleOfTheDay, translateTextToEnglish } from '@/lib/url-normalizer';
+import { normalizeUrl, decodeHtmlEntities, isEligibleForArticleOfTheDay, translateTextToEnglish, extractFrontNumber, compareByFrontNumber } from '@/lib/url-normalizer';
 import { ImageUploadInput } from '@/components/admin/image-upload-input';
 import { DeleteConfirmModal } from '@/components/admin/delete-confirm-modal';
-import { Plus, Trash2, Edit2, ExternalLink, Sparkles, Loader2, Link2, MoveUp, MoveDown, X, CheckCircle2, Shuffle, Archive, RotateCcw, AlertTriangle, ArrowUpDown, MessageSquare, Filter, Globe, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Edit2, ExternalLink, Sparkles, Loader2, Link2, MoveUp, MoveDown, X, CheckCircle2, Archive, RotateCcw, AlertTriangle, ArrowUpDown, MessageSquare, Filter, Globe, GripVertical } from 'lucide-react';
 
 function getDailyArticlePick(articles: Article[]): { article: Article; quote: string } | null {
   if (!articles || articles.length === 0) return null;
@@ -115,7 +115,7 @@ export default function ArticlesAdminPage() {
 
   const [viewTab, setViewTab] = useState<'active' | 'archived'>('active');
   const [filterCategory, setFilterCategory] = useState<'all' | 'spotlight' | 'quotes' | 'outlets' | 'external'>('all');
-  const [sortBy, setSortBy] = useState<'order' | 'name-asc' | 'name-desc' | 'clicks-desc' | 'clicks-asc' | 'newest' | 'oldest'>('order');
+  const [sortBy, setSortBy] = useState<'order' | 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc' | 'clicks-desc' | 'clicks-asc' | 'newest' | 'oldest'>('order');
   const [softDeleteTarget, setSoftDeleteTarget] = useState<Article | null>(null);
   const [permDeleteTarget, setPermDeleteTarget] = useState<Article | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -150,7 +150,8 @@ export default function ArticlesAdminPage() {
   const archivedArticles = profileArticles.filter(a => a.status === 'archived');
   const currentTabArticles = viewTab === 'active' ? activeArticles : archivedArticles;
 
-  const getSortedArticlesList = (baseList: Article[]) => {
+  const getSortedArticlesList = (baseList: Article[], overrideSortBy?: typeof sortBy) => {
+    const activeSort = overrideSortBy || sortBy;
     const dailyPick = getDailyArticlePick(activeArticles);
     const filtered = baseList.filter(art => {
       const isEligible = isEligibleForArticleOfTheDay(art);
@@ -162,11 +163,15 @@ export default function ArticlesAdminPage() {
       return true;
     });
 
-    switch (sortBy) {
+    switch (activeSort) {
+      case 'num-asc':
+        return filtered.sort((a, b) => compareByFrontNumber(a.title, b.title, 'asc'));
+      case 'num-desc':
+        return filtered.sort((a, b) => compareByFrontNumber(a.title, b.title, 'desc'));
       case 'name-asc':
-        return filtered.sort((a, b) => a.title.localeCompare(b.title));
+        return filtered.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
       case 'name-desc':
-        return filtered.sort((a, b) => b.title.localeCompare(a.title));
+        return filtered.sort((a, b) => b.title.localeCompare(a.title, undefined, { numeric: true, sensitivity: 'base' }));
       case 'clicks-desc':
         return filtered.sort((a, b) => (b.clicks_count || 0) - (a.clicks_count || 0));
       case 'clicks-asc':
@@ -183,7 +188,32 @@ export default function ArticlesAdminPage() {
 
   const sortedTabArticles = getSortedArticlesList(currentTabArticles);
 
-  const handleFetchMetadata = async () => {
+  const handleSortChange = async (newSort: typeof sortBy) => {
+    setSortBy(newSort);
+
+    if (newSort !== 'order') {
+      const sortedList = getSortedArticlesList(currentTabArticles, newSort);
+      if (sortedList.length > 0) {
+        const updates = sortedList.map((art, idx) => ({
+          id: art.id,
+          display_order: idx + 1,
+        }));
+
+        const allArticles = getStoredArticles();
+        const orderMap = new Map(updates.map(u => [u.id, u.display_order]));
+        const updatedLocal = allArticles.map(a => {
+          const newOrder = orderMap.get(a.id);
+          return newOrder !== undefined ? { ...a, display_order: newOrder, updated_at: new Date().toISOString() } : a;
+        });
+        saveArticles(updatedLocal);
+
+        await updateArticlesOrderInSupabase(updates);
+        refreshData();
+      }
+    }
+  };
+
+  const handleFetchMetadata = async (isManualClick = false) => {
     if (!url.trim()) return;
     setFetchingMeta(true);
     try {
@@ -193,10 +223,21 @@ export default function ArticlesAdminPage() {
         body: JSON.stringify({ url }),
       });
       const data: ExtractedMetadata = await res.json();
-      if (data.title) setTitle(data.title);
-      if (data.websiteName) setWebsiteName(data.websiteName);
-      if (data.thumbnail) setThumbnail(data.thumbnail);
-      if (data.description) setDescription(data.description);
+      if (data.title) {
+        const frontMatch = title.match(/^(?:[#\[\(])?\s*\d+(?:\s*[\.\-\)]\s*|\s+)/);
+        const frontPrefix = frontMatch ? frontMatch[0] : '';
+
+        if (editingArticle && title.trim() && !isManualClick) {
+          // Keep existing manually edited title intact on blur
+        } else if (frontPrefix) {
+          setTitle(`${frontPrefix}${data.title}`);
+        } else {
+          setTitle(data.title);
+        }
+      }
+      if (data.websiteName && (!websiteName || isManualClick)) setWebsiteName(data.websiteName);
+      if (data.thumbnail && (!thumbnail || isManualClick)) setThumbnail(data.thumbnail);
+      if (data.description && (!description || isManualClick)) setDescription(data.description);
     } catch {
       // Ignore
     } finally {
@@ -352,33 +393,7 @@ export default function ArticlesAdminPage() {
     refreshData();
   };
 
-  const handleReshuffleOrder = async () => {
-    if (activeArticles.length < 2) return;
 
-    // Fisher-Yates Random Shuffle
-    const shuffled = [...activeArticles];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    const updates = shuffled.map((art, idx) => ({
-      id: art.id,
-      display_order: idx + 1,
-    }));
-
-    // Update local storage immediately
-    const allArticles = getStoredArticles();
-    const updatedLocal = allArticles.map(a => {
-      const match = updates.find(u => u.id === a.id);
-      return match ? { ...a, display_order: match.display_order } : a;
-    });
-    saveArticles(updatedLocal);
-
-    await updateArticlesOrderInSupabase(updates);
-    refreshData();
-    showToast(`Reshuffled ${shuffled.length} articles order randomly!`, 'success');
-  };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -491,15 +506,35 @@ export default function ArticlesAdminPage() {
           </div>
 
           {viewTab === 'active' && activeArticles.length > 1 && (
-            <div className="relative flex items-center bg-slate-100 hover:bg-slate-200/80 p-2 rounded-xl border border-slate-200 text-slate-700 transition-all shrink-0 cursor-pointer shadow-2xs" title="Sort Articles">
-              <ArrowUpDown className="w-4 h-4 text-slate-700" />
+            <div
+              className={`relative flex items-center px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs gap-1.5 ${
+                sortBy !== 'order'
+                  ? 'bg-rose-50 border-rose-300 text-rose-700'
+                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700'
+              }`}
+              title="Sort Articles"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate max-w-[140px] hidden sm:inline">
+                {sortBy === 'order' && 'Default Order'}
+                {sortBy === 'num-asc' && 'Number (Ascending)'}
+                {sortBy === 'num-desc' && 'Number (Descending)'}
+                {sortBy === 'name-asc' && 'Name (A to Z)'}
+                {sortBy === 'name-desc' && 'Name (Z to A)'}
+                {sortBy === 'clicks-desc' && 'Clicks (Highest)'}
+                {sortBy === 'clicks-asc' && 'Clicks (Lowest)'}
+                {sortBy === 'newest' && 'Newest'}
+                {sortBy === 'oldest' && 'Oldest'}
+              </span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => handleSortChange(e.target.value as any)}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
                 title="Sort Articles"
               >
-                <option value="order">Default</option>
+                <option value="order">Default (Custom Drag & Drop)</option>
+                <option value="num-asc">Number at Front (Ascending)</option>
+                <option value="num-desc">Number at Front (Descending)</option>
                 <option value="name-asc">Name (A to Z)</option>
                 <option value="name-desc">Name (Z to A)</option>
                 <option value="clicks-desc">Clicks (Highest)</option>
@@ -508,17 +543,6 @@ export default function ArticlesAdminPage() {
                 <option value="oldest">Oldest</option>
               </select>
             </div>
-          )}
-
-          {viewTab === 'active' && activeArticles.length > 1 && (
-            <button
-              type="button"
-              onClick={handleReshuffleOrder}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 border border-slate-200 text-slate-700 hover:text-rose-600 transition-all cursor-pointer shrink-0 shadow-2xs"
-              title="Randomly Reshuffle Article Display Order"
-            >
-              <Shuffle className="w-4 h-4 text-rose-600" />
-            </button>
           )}
 
           <button
@@ -824,13 +848,13 @@ export default function ArticlesAdminPage() {
                     required
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    onBlur={handleFetchMetadata}
+                    onBlur={() => handleFetchMetadata(false)}
                     placeholder={activeProfile.profile_type === 'engagement' ? 'https://www.tiktok.com/... or https://facebook.com/...' : 'https://...'}
                     className="w-full pl-4 pr-24 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-600 shadow-xs"
                   />
                   <button
                     type="button"
-                    onClick={handleFetchMetadata}
+                    onClick={() => handleFetchMetadata(true)}
                     disabled={fetchingMeta || !url.trim()}
                     className="absolute right-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-extrabold flex items-center gap-1 disabled:opacity-50 transition-colors cursor-pointer"
                   >

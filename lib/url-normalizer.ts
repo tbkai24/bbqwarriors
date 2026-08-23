@@ -285,6 +285,13 @@ export async function translateTextToEnglish(text: string): Promise<string> {
   if (!text || !text.trim()) return text;
   const decoded = decodeHtmlEntities(text);
 
+  // Preserve front number prefix if present (e.g. "1. ", "02 - ", "[10] ", "#5 ")
+  const frontMatch = decoded.match(/^(?:[#\[\(])?\s*\d+(?:\s*[\.\-\)]\s*|\s+)/);
+  const frontPrefix = frontMatch ? frontMatch[0] : '';
+  const textToTranslate = frontPrefix ? decoded.slice(frontPrefix.length).trim() : decoded;
+
+  if (!textToTranslate) return decoded;
+
   const isValid = (trans?: string | null) => {
     if (!trans || !trans.trim()) return false;
     const upper = trans.toUpperCase();
@@ -299,7 +306,7 @@ export async function translateTextToEnglish(text: string): Promise<string> {
     const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: decoded }),
+      body: JSON.stringify({ text: textToTranslate }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -307,9 +314,9 @@ export async function translateTextToEnglish(text: string): Promise<string> {
         data &&
         data.translated &&
         isValid(data.translated) &&
-        data.translated.trim().toLowerCase() !== decoded.trim().toLowerCase()
+        data.translated.trim().toLowerCase() !== textToTranslate.toLowerCase()
       ) {
-        return decodeHtmlEntities(data.translated);
+        return frontPrefix + decodeHtmlEntities(data.translated);
       }
     }
   } catch {
@@ -319,7 +326,7 @@ export async function translateTextToEnglish(text: string): Promise<string> {
   // 2. Client-side MyMemory API fallback
   try {
     const mmRes = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(decoded)}&langpair=id|en`
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=id|en`
     );
     if (mmRes.ok) {
       const mmData = await mmRes.json();
@@ -328,9 +335,9 @@ export async function translateTextToEnglish(text: string): Promise<string> {
         translatedText &&
         typeof translatedText === 'string' &&
         isValid(translatedText) &&
-        translatedText.trim().toLowerCase() !== decoded.trim().toLowerCase()
+        translatedText.trim().toLowerCase() !== textToTranslate.toLowerCase()
       ) {
-        return decodeHtmlEntities(translatedText.trim());
+        return frontPrefix + decodeHtmlEntities(translatedText.trim());
       }
     }
   } catch {
@@ -339,3 +346,49 @@ export async function translateTextToEnglish(text: string): Promise<string> {
 
   return decoded;
 }
+
+/**
+ * Extracts a numeric value from the beginning of a string if present.
+ * Works with numbers prefixed with symbols like "#", "[", "(", or plain numbers:
+ * - "1. SB19 Moonlight MV" -> 1
+ * - "02 - SB19 GENTO" -> 2
+ * - "[10] SB19 KALAKAL" -> 10
+ * - "#5 SB19 MV" -> 5
+ * - "SB19 MV 1" -> null
+ */
+export function extractFrontNumber(str: string): number | null {
+  if (!str) return null;
+  const trimmed = str.trim();
+  const match = trimmed.match(/^(?:[#\[\(])?\s*(\d+)/);
+  if (match) {
+    const parsed = parseInt(match[1], 10);
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+/**
+ * Compares two titles by their front number if both or either has one,
+ * falling back to natural string localeCompare.
+ */
+export function compareByFrontNumber(titleA: string, titleB: string, direction: 'asc' | 'desc' = 'asc'): number {
+  const numA = extractFrontNumber(titleA);
+  const numB = extractFrontNumber(titleB);
+
+  if (numA !== null && numB !== null) {
+    if (numA !== numB) {
+      return direction === 'asc' ? numA - numB : numB - numA;
+    }
+    return direction === 'asc'
+      ? titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: 'base' })
+      : titleB.localeCompare(titleA, undefined, { numeric: true, sensitivity: 'base' });
+  }
+
+  if (numA !== null) return -1; // Items with front numbers take precedence
+  if (numB !== null) return 1;
+
+  return direction === 'asc'
+    ? titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: 'base' })
+    : titleB.localeCompare(titleA, undefined, { numeric: true, sensitivity: 'base' });
+}
+

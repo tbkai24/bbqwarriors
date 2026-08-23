@@ -118,6 +118,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     checkAuthStatus();
   }, [pathname, router]);
 
+  const handleSetActiveProfile = (profile: Profile) => {
+    setActiveProfile(profile);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sb19_active_profile_id', profile.id);
+    }
+  };
+
   const loadAllData = async () => {
     // 1. Initial local load
     const storedProfiles = getStoredProfiles();
@@ -128,8 +135,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setArticles(storedArticles);
     setSubmissions(storedSubmissions);
 
-    if (storedProfiles.length > 0 && !activeProfile) {
-      setActiveProfile(storedProfiles[0]);
+    const savedProfileId = typeof window !== 'undefined' ? localStorage.getItem('sb19_active_profile_id') : null;
+
+    if (storedProfiles.length > 0) {
+      const matchSaved = savedProfileId ? storedProfiles.find(p => p.id === savedProfileId) : null;
+      const target = matchSaved || storedProfiles[0];
+      setActiveProfile(target);
     }
 
     // 2. Fetch fresh DB state asynchronously
@@ -142,9 +153,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       if (dbProfs.length > 0) {
         setProfiles(dbProfs);
-        // Retain or select active profile
-        const activeExist = dbProfs.find(p => p.id === activeProfile?.id);
-        setActiveProfile(activeExist || dbProfs[0]);
+        const currentSavedId = typeof window !== 'undefined' ? localStorage.getItem('sb19_active_profile_id') : null;
+        const activeExist = dbProfs.find(p => p.id === (currentSavedId || activeProfile?.id));
+        const target = activeExist || dbProfs[0];
+        setActiveProfile(target);
+        if (target && typeof window !== 'undefined') {
+          localStorage.setItem('sb19_active_profile_id', target.id);
+        }
       }
       if (dbArts.length > 0) setArticles(dbArts);
       if (dbSubs.length > 0) setSubmissions(dbSubs);
@@ -197,7 +212,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       value={{
         profiles,
         activeProfile,
-        setActiveProfile,
+        setActiveProfile: handleSetActiveProfile,
         articles,
         submissions,
         refreshData: loadAllData,
@@ -225,7 +240,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               profiles={profiles}
               activeProfile={activeProfile}
               submissions={submissions}
-              onSelectProfile={(p) => setActiveProfile(p)}
+              onSelectProfile={(p) => handleSetActiveProfile(p)}
               onCreateNewProfile={() => setIsCreateOpen(true)}
               onRefreshData={loadAllData}
             />
@@ -264,53 +279,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        <div className="flex-1 flex flex-col md:flex-row">
-          {/* Admin Sidebar */}
-          <aside className="w-full md:w-64 bg-white/70 border-r border-slate-200 p-4 shrink-0">
-            {activeProfile && (
-              <div className="p-3.5 rounded-2xl glass-panel border border-slate-200 bg-white mb-4 flex items-center gap-3 shadow-xs">
-                <div
-                  className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200"
-                  style={{ boxShadow: `0 0 12px ${(activeProfile.accent_color || '#e11d48')}33` }}
-                >
-                  {activeProfile.profile_image || activeProfile.cover_image ? (
-                    <img src={activeProfile.profile_image || activeProfile.cover_image || ''} alt={activeProfile.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-700 font-bold text-sm">
-                      {activeProfile.title.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-900 truncate">{activeProfile.title}</div>
-                  <div className="text-[11px] text-slate-500 font-medium truncate">Active Profile</div>
-                </div>
-              </div>
-            )}
-
+        {/* Workspace Body */}
+        <div className="flex-1 flex">
+          {/* Left Navigation Sidebar */}
+          <aside className="w-64 bg-white border-r border-slate-200 p-4 hidden md:flex flex-col justify-between shrink-0 shadow-2xs">
             <nav className="space-y-1">
+              <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                Workspace Menu
+              </div>
               {navItems.map((item) => {
-                const IconComp = item.icon;
+                const Icon = item.icon;
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                       isActive
-                        ? 'bg-rose-50 text-rose-700 border border-rose-200 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <IconComp className={`w-4 h-4 ${isActive ? 'text-rose-600' : 'text-slate-500'}`} />
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                       <span>{item.label}</span>
                     </div>
 
                     {item.badge !== undefined && item.badge > 0 && (
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          item.highlight ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : item.highlight
+                            ? 'bg-rose-100 text-rose-700 animate-pulse'
+                            : 'bg-slate-100 text-slate-600'
                         }`}
                       >
                         {item.badge}
@@ -320,6 +322,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 );
               })}
             </nav>
+
+            {/* Bottom Sidebar Info Banner */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-rose-50 to-amber-50 border border-rose-200/60 space-y-1">
+              <div className="text-[11px] font-extrabold text-slate-900">
+                Active Workspace
+              </div>
+              <div className="text-xs font-bold text-rose-600 truncate">
+                {activeProfile?.title || 'No Profile Selected'}
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                Slug: <span className="font-mono">/profile/{activeProfile?.slug}</span>
+              </div>
+            </div>
           </aside>
 
           {/* Main Workspace Content */}
@@ -334,7 +349,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           onClose={() => setIsCreateOpen(false)}
           onCreated={(newProf) => {
             loadAllData();
-            setActiveProfile(newProf);
+            handleSetActiveProfile(newProf);
           }}
         />
       </div>

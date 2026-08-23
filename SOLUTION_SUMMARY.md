@@ -188,3 +188,31 @@ When building future Web Apps or PWAs:
 - **Database Sequence Order Sync (`lib/data-store.ts`)**: Created `updateProfilesOrderInSupabase` and `updateArticlesOrderInSupabase` executing batch PostgreSQL updates to assign sequential `display_order` (1, 2, 3...) to Supabase DB.
 - **Dead Code Cleanup**: Deleted unused `reorder-profiles-modal.tsx` to maintain documentation and repository integrity.
 
+---
+
+## 9. 🔢 Front-Number Title Sorting & Automatic Database Sync
+
+### 1. Front-Number Parsing & Natural Comparison Engine (`lib/url-normalizer.ts`)
+- **`extractFrontNumber(title: string)`**: Extracts leading numeric digits from titles formatted with numbers at the beginning (e.g. `1. Title`, `02 - Title`, `[10] Title`, `#5 Title`).
+- **`compareByFrontNumber(titleA, titleB, direction)`**: Sorts items numerically by their front number (`1, 2, 3... 10, 11, 100`). If front numbers are identical or absent, seamlessly falls back to natural locale-aware string comparison (`localeCompare(..., { numeric: true })`).
+
+### 2. Streamlined Admin Sorting UI (`app/(admin)/admin/articles/page.tsx`)
+- Renamed options cleanly to **`Number at Front (Ascending)`** (`num-asc`) and **`Number at Front (Descending)`** (`num-desc`) (removing restrictive `1 to 9` labels).
+- **Automatic DB Sync (`handleSortChange`)**: Selecting any sort mode automatically re-sequences `display_order` (1, 2, 3...) and syncs to Supabase DB and local storage instantly behind the scenes without extra buttons.
+### 3. Front Number Protection During Edit & Auto-Translation
+- **Translation Preservation (`translateTextToEnglish`)**: Front numbers (e.g. `1. `, `02 - `, `[10] `) are extracted before sending text to translation APIs and attached back afterwards, preventing translation engines from stripping numbers as list formatting.
+---
+
+## 10. 🔄 Active Workspace Profile Persistence Across Page Refreshes
+
+### The Problem Solved
+On page refresh (F5) or browser re-open, `activeProfile` in `AdminLayout` reset to `null` and defaulted to the top/first profile in the list (`storedProfiles[0]`), forcing admins to re-select their active workspace every time they refreshed.
+
+### The Solution (`app/(admin)/admin/layout.tsx`)
+- **`handleSetActiveProfile`**: Saves the selected profile's UUID to `localStorage.setItem('sb19_active_profile_id', profile.id)` whenever a profile is selected in the top workspace switcher.
+- **Refresh State Restoration (`loadAllData`)**: On page load, reads `localStorage.setItem('sb19_active_profile_id')` and restores the exact active profile, retaining it seamlessly across refreshes, navigation, and background Supabase DB polling.
+
+
+
+
+
