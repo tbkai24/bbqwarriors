@@ -203,14 +203,15 @@ When building future Web Apps or PWAs:
 - **Translation Preservation (`translateTextToEnglish`)**: Front numbers (e.g. `1. `, `02 - `, `[10] `) are extracted before sending text to translation APIs and attached back afterwards, preventing translation engines from stripping numbers as list formatting.
 ---
 
-## 10. 🔄 Active Workspace Profile Persistence Across Page Refreshes
+## 11. 🌐 Stream Pick & Foreign Article Auto-Translation Upgrade
 
 ### The Problem Solved
-On page refresh (F5) or browser re-open, `activeProfile` in `AdminLayout` reset to `null` and defaulted to the top/first profile in the list (`storedProfiles[0]`), forcing admins to re-select their active workspace every time they refreshed.
+Indonesian/foreign news articles (e.g. `CreativeDisc.com - JAKARTA - SB19 dan BE:FIRST mengajak...`) failed to translate or showed rate-limited HTTP 429/403 errors because of standard public GTX and MyMemory endpoints being rate-limited.
 
-### The Solution (`app/(admin)/admin/layout.tsx`)
-- **`handleSetActiveProfile`**: Saves the selected profile's UUID to `localStorage.setItem('sb19_active_profile_id', profile.id)` whenever a profile is selected in the top workspace switcher.
-- **Refresh State Restoration (`loadAllData`)**: On page load, reads `localStorage.setItem('sb19_active_profile_id')` and restores the exact active profile, retaining it seamlessly across refreshes, navigation, and background Supabase DB polling.
+### The Solution (`app/api/translate/route.ts` & `lib/url-normalizer.ts`)
+- **`dict-chrome-ex` High-Reliability Google Translate Endpoint**: Upgraded translation requests to `client=dict-chrome-ex` which handles multi-sentence foreign news paragraphs without rate limits or 429/403 blocks.
+- **Stream Pick Quote & Title Parallel Auto-Translation (`ArticleOfTheDayCard`)**: Updated `ArticleOfTheDayCard` to translate both the article quote AND the title in parallel, preserving any leading numbers (`9. `) while outputting natural English text.
+
 
 
 

@@ -50,18 +50,26 @@ function getDailyArticlePick(articles: Article[]): { article: Article; quote: st
 function ArticleOfTheDayCard({ articles, isEngagementProfile = false }: { articles: Article[]; isEngagementProfile?: boolean }) {
   const dailyPick = getDailyArticlePick(articles);
   const [displayQuote, setDisplayQuote] = useState<string>(dailyPick?.quote || '');
+  const [displayTitle, setDisplayTitle] = useState<string>(dailyPick?.article.title || '');
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!dailyPick?.quote) return;
+    if (!dailyPick) return;
     const rawQuote = decodeHtmlEntities(dailyPick.quote);
+    const rawTitle = decodeHtmlEntities(dailyPick.article.title);
     setDisplayQuote(rawQuote);
+    setDisplayTitle(rawTitle);
 
     let isCancelled = false;
     setIsTranslating(true);
-    translateTextToEnglish(rawQuote).then((translated) => {
-      if (!isCancelled && translated) {
-        setDisplayQuote(translated);
+
+    Promise.all([
+      translateTextToEnglish(rawQuote),
+      translateTextToEnglish(rawTitle),
+    ]).then(([transQuote, transTitle]) => {
+      if (!isCancelled) {
+        if (transQuote) setDisplayQuote(transQuote);
+        if (transTitle) setDisplayTitle(transTitle);
       }
     }).finally(() => {
       if (!isCancelled) setIsTranslating(false);
@@ -70,7 +78,7 @@ function ArticleOfTheDayCard({ articles, isEngagementProfile = false }: { articl
     return () => {
       isCancelled = true;
     };
-  }, [dailyPick?.article.id, dailyPick?.quote]);
+  }, [dailyPick?.article.id, dailyPick?.quote, dailyPick?.article.title]);
 
   if (!dailyPick) return null;
 
@@ -97,7 +105,7 @@ function ArticleOfTheDayCard({ articles, isEngagementProfile = false }: { articl
 
       <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-purple-200/40">
         <span className="text-[11px] font-extrabold text-slate-700 truncate">
-          {decodeHtmlEntities(dailyPick.article.title)}
+          {displayTitle}
         </span>
         <a
           href={dailyPick.article.article_url}

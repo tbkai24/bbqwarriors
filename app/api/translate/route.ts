@@ -12,26 +12,29 @@ export async function POST(request: Request) {
 
     const decoded = decodeHtmlEntities(rawText);
 
-    // Validation helper to reject MyMemory error responses
+    // Validation helper to reject MyMemory warning and error responses
     const isValidTranslation = (trans: string) => {
       if (!trans || !trans.trim()) return false;
       const upper = trans.toUpperCase();
       if (upper.includes('PLEASE SELECT TWO DISTINCT LANGUAGES')) return false;
       if (upper.includes('MYMEMORY WARNING')) return false;
       if (upper.includes('INVALID LANGUAGE PAIR')) return false;
+      if (upper.includes('QUERY LENGTH LIMIT EXCEEDED')) return false;
+      if (upper.includes('YOU HAVE USED ALL YOUR FREE')) return false;
+      if (upper.includes('MAXIMUM ALLOWED')) return false;
       return true;
     };
 
-    // 1. Primary: Google Translate GTX (sl=auto)
+    // 1. Primary: Google Chrome Extension API (client=dict-chrome-ex, sl=auto, tl=en) - High Reliability
     try {
-      const res = await fetch(
-        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(decoded)}`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          },
-        }
-      );
+      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=auto&tl=en&dt=t&q=${encodeURIComponent(decoded)}`;
+      const res = await fetch(gtxUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept': '*/*',
+        },
+        next: { revalidate: 86400 },
+      });
 
       if (res.ok) {
         const data = await res.json();
@@ -46,20 +49,13 @@ export async function POST(request: Request) {
         }
       }
     } catch {
-      // Ignore
+      // Fallback
     }
 
-    // 2. Google Translate GTX (sl=id for Indonesian)
+    // 2. Secondary: Standard GTX Fallback
     try {
-      const res2 = await fetch(
-        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=en&dt=t&q=${encodeURIComponent(decoded)}`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          },
-        }
-      );
-
+      const gtxUrl2 = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(decoded)}`;
+      const res2 = await fetch(gtxUrl2);
       if (res2.ok) {
         const data2 = await res2.json();
         if (data2 && data2[0] && Array.isArray(data2[0])) {
@@ -73,32 +69,11 @@ export async function POST(request: Request) {
         }
       }
     } catch {
-      // Ignore
-    }
-
-    // 3. MyMemory API (Strictly validated)
-    try {
-      const mmRes = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(decoded)}&langpair=id|en`
-      );
-      if (mmRes.ok) {
-        const mmData = await mmRes.json();
-        const translatedText = mmData?.responseData?.translatedText;
-        if (
-          translatedText &&
-          typeof translatedText === 'string' &&
-          isValidTranslation(translatedText) &&
-          translatedText.trim().toLowerCase() !== decoded.trim().toLowerCase()
-        ) {
-          return NextResponse.json({ translated: decodeHtmlEntities(translatedText.trim()) });
-        }
-      }
-    } catch {
-      // Ignore
+      // Fallback
     }
 
     return NextResponse.json({ translated: decoded });
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ translated: rawText || '' });
   }
 }

@@ -285,8 +285,8 @@ export async function translateTextToEnglish(text: string): Promise<string> {
   if (!text || !text.trim()) return text;
   const decoded = decodeHtmlEntities(text);
 
-  // Preserve front number prefix if present (e.g. "1. ", "02 - ", "[10] ", "#5 ")
-  const frontMatch = decoded.match(/^(?:[#\[\(])?\s*\d+(?:\s*[\.\-\)]\s*|\s+)/);
+  // Preserve explicit front number prefix if present (e.g. "1. ", "02 - ", "[10] ", "(3) ")
+  const frontMatch = decoded.match(/^(?:[#\[\(])?\s*\d+(?:\.|\-|\)|\]|\:)\s*/);
   const frontPrefix = frontMatch ? frontMatch[0] : '';
   const textToTranslate = frontPrefix ? decoded.slice(frontPrefix.length).trim() : decoded;
 
@@ -298,6 +298,9 @@ export async function translateTextToEnglish(text: string): Promise<string> {
     if (upper.includes('PLEASE SELECT TWO DISTINCT LANGUAGES')) return false;
     if (upper.includes('MYMEMORY WARNING')) return false;
     if (upper.includes('INVALID LANGUAGE PAIR')) return false;
+    if (upper.includes('QUERY LENGTH LIMIT EXCEEDED')) return false;
+    if (upper.includes('YOU HAVE USED ALL YOUR FREE')) return false;
+    if (upper.includes('MAXIMUM ALLOWED')) return false;
     return true;
   };
 
@@ -320,13 +323,33 @@ export async function translateTextToEnglish(text: string): Promise<string> {
       }
     }
   } catch {
-    // Ignore
+    // Fallback
   }
 
-  // 2. Client-side MyMemory API fallback
+  // 2. Client-side Google Translate GTX fallback (sl=auto -> tl=en)
+  try {
+    const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(textToTranslate)}`;
+    const res = await fetch(gtxUrl);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data[0] && Array.isArray(data[0])) {
+        const translatedParts = data[0]
+          .map((item: any) => (Array.isArray(item) && typeof item[0] === 'string' ? item[0] : ''))
+          .filter(Boolean);
+        const translated = translatedParts.join(' ');
+        if (isValid(translated) && translated.trim().toLowerCase() !== textToTranslate.toLowerCase()) {
+          return frontPrefix + decodeHtmlEntities(translated.trim());
+        }
+      }
+    }
+  } catch {
+    // Fallback
+  }
+
+  // 3. Client-side MyMemory API fallback (Indonesian / Foreign -> English)
   try {
     const mmRes = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=id|en`
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=autodetect|en`
     );
     if (mmRes.ok) {
       const mmData = await mmRes.json();
@@ -341,7 +364,7 @@ export async function translateTextToEnglish(text: string): Promise<string> {
       }
     }
   } catch {
-    // Ignore
+    // Fallback
   }
 
   return decoded;
