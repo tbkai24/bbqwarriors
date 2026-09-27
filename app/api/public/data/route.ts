@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-export const revalidate = 60; // Revalidate every 60 seconds at edge
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cnvxdxltwpwmnrfqvpqq.supabase.co';
@@ -12,14 +13,15 @@ export async function GET() {
   };
 
   try {
+    // Query strictly the BBQ Warriors isolated tables (NO cache, NO fallback to legacy profiles/articles)
     const [profilesRes, articlesRes] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/profiles?select=*&status=eq.published&order=display_order.asc`, {
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_profiles?select=*&status=eq.published&order=display_order.asc`, {
         headers,
-        next: { revalidate: 60 },
+        cache: 'no-store',
       }),
-      fetch(`${supabaseUrl}/rest/v1/articles?select=*&status=eq.published&order=display_order.asc`, {
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_articles?select=*&status=eq.published&order=display_order.asc`, {
         headers,
-        next: { revalidate: 60 },
+        cache: 'no-store',
       }),
     ]);
 
@@ -27,15 +29,15 @@ export async function GET() {
     const articles = articlesRes.ok ? await articlesRes.json() : [];
 
     return NextResponse.json(
-      { profiles, articles, timestamp: new Date().toISOString() },
+      { profiles: Array.isArray(profiles) ? profiles : [], articles: Array.isArray(articles) ? articles : [], timestamp: new Date().toISOString() },
       {
         status: 200,
         headers: {
-          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         },
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ profiles: [], articles: [], error: err.message }, { status: 200 });
   }
 }

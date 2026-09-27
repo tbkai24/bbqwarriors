@@ -21,12 +21,12 @@ import { createClient } from '@/lib/supabase/client';
 import { normalizeUrl, isDuplicateUrl } from './url-normalizer';
 import { detectDeviceType, detectCountryCode, normalizeReferrer, getClientIp } from './device-detector';
 
-const LOCAL_STORAGE_KEY_PROFILES = 'sb19_hub_profiles_v7';
-const LOCAL_STORAGE_KEY_ARTICLES = 'sb19_hub_articles_v7';
-const LOCAL_STORAGE_KEY_SUBMISSIONS = 'sb19_hub_submissions_v7';
-const LOCAL_STORAGE_KEY_ANALYTICS = 'sb19_hub_analytics_events_v7';
-const LOCAL_STORAGE_KEY_DAILY_TRAFFIC = 'sb19_hub_daily_traffic_v7';
-const LOCAL_STORAGE_KEY_NOTIFICATIONS = 'sb19_hub_notifications_v7';
+const LOCAL_STORAGE_KEY_PROFILES = 'bbq_warriors_profiles_v1';
+const LOCAL_STORAGE_KEY_ARTICLES = 'bbq_warriors_articles_v1';
+const LOCAL_STORAGE_KEY_SUBMISSIONS = 'bbq_warriors_submissions_v1';
+const LOCAL_STORAGE_KEY_ANALYTICS = 'bbq_warriors_analytics_events_v1';
+const LOCAL_STORAGE_KEY_DAILY_TRAFFIC = 'bbq_warriors_daily_traffic_v1';
+const LOCAL_STORAGE_KEY_NOTIFICATIONS = 'bbq_warriors_notifications_v1';
 
 /**
  * ----------------------------------------------------------------------------
@@ -41,11 +41,16 @@ const LOCAL_STORAGE_KEY_NOTIFICATIONS = 'sb19_hub_notifications_v7';
 export function getStoredProfiles(): Profile[] {
   if (typeof window === 'undefined') return [];
   try {
+    // Purge old legacy keys from previous project versions
+    ['sb19_hub_profiles_v7', 'sb19_hub_articles_v7', 'sb19_hub_profiles', 'sb19_hub_articles'].forEach(k => {
+      try { localStorage.removeItem(k); } catch {}
+    });
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_PROFILES);
     if (raw) {
       const parsed: Profile[] = JSON.parse(raw);
-      if (parsed.length > 0) {
-        return parsed.sort((a: Profile, b: Profile) => (a.display_order ?? 999) - (b.display_order ?? 999));
+      const clean = parsed.filter(p => !p.title.includes('SB19 '));
+      if (clean.length > 0) {
+        return clean.sort((a: Profile, b: Profile) => (a.display_order ?? 999) - (b.display_order ?? 999));
       }
     }
   } catch {
@@ -57,14 +62,15 @@ export function getStoredProfiles(): Profile[] {
 /** Saves profiles list to browser local storage */
 export function saveProfiles(profiles: Profile[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(LOCAL_STORAGE_KEY_PROFILES, JSON.stringify(profiles));
+    const clean = profiles.filter(p => !p.title.includes('SB19 '));
+    localStorage.setItem(LOCAL_STORAGE_KEY_PROFILES, JSON.stringify(clean));
   }
 }
 
 // In-memory cache to prevent redundant DB calls during fast UI navigation
 let cachedProfiles: { data: Profile[]; timestamp: number } | null = null;
 let cachedArticles: { data: Article[]; timestamp: number } | null = null;
-const CACHE_TTL_MS = 15000; // 15 seconds TTL
+const CACHE_TTL_MS = 5000; // 5 seconds TTL
 
 /** Invalidates short-lived memory cache to force fresh DB fetch on mutations */
 export function clearDataStoreCache() {
@@ -80,16 +86,17 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
     return cachedProfiles.data;
   }
 
-  // Try Edge-cached API route first for public visitors (skip if forceFresh)
-  if (!forceFresh && typeof window !== 'undefined') {
+  // Try API route first with no-store
+  if (typeof window !== 'undefined') {
     try {
-      const edgeRes = await fetch('/api/public/data');
+      const edgeRes = await fetch('/api/public/data', { cache: 'no-store' });
       if (edgeRes.ok) {
         const edgeJson = await edgeRes.json();
-        if (edgeJson.profiles && edgeJson.profiles.length > 0) {
-          saveProfiles(edgeJson.profiles);
-          cachedProfiles = { data: edgeJson.profiles, timestamp: now };
-          return edgeJson.profiles;
+        if (edgeJson.profiles && Array.isArray(edgeJson.profiles)) {
+          const cleanProfs = edgeJson.profiles.filter((p: Profile) => !p.title.includes('SB19 '));
+          saveProfiles(cleanProfs);
+          cachedProfiles = { data: cleanProfs, timestamp: now };
+          return cleanProfs;
         }
       }
     } catch {
@@ -100,7 +107,7 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
   try {
     const supabase = createClient();
     let queryPromise = supabase
-      .from('profiles')
+      .from('bbq_warriors_profiles')
       .select('*')
       .order('display_order', { ascending: true });
 
@@ -110,11 +117,11 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
 
     let { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
-    // Fallback if ordering by display_order fails due to missing column
+    // Order by created_at if display_order fails
     if (error && error.message !== 'Timeout') {
-      const fallbackRes = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-      data = fallbackRes.data;
-      error = fallbackRes.error;
+      const retryRes = await supabase.from('bbq_warriors_profiles').select('*').order('created_at', { ascending: false });
+      data = retryRes.data;
+      error = retryRes.error;
     }
 
     if (!error && data && data.length > 0) {
@@ -124,7 +131,7 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
         const isSpVideo = Boolean(sp.youtube_url && (sp.youtube_url.includes('watch?v=') || sp.youtube_url.includes('youtu.be/')));
         const isLpVideo = Boolean(lp?.youtube_url && (lp.youtube_url.includes('watch?v=') || lp.youtube_url.includes('youtu.be/')));
         const cleanYt = isSpVideo
-          ? (!isLpVideo && lp?.youtube_url ? lp.youtube_url : 'https://www.youtube.com/@sb19official')
+          ? (!isLpVideo && lp?.youtube_url ? lp.youtube_url : 'https://www.youtube.com/@JoshCullenOfficial')
           : sp.youtube_url;
 
         return {
@@ -161,7 +168,7 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
   try {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('profiles')
+      .from('bbq_warriors_profiles')
       .upsert(profile)
       .select()
       .maybeSingle();
@@ -172,7 +179,7 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
       // Fallback if custom_social_links or display_order column is not yet migrated in Supabase SQL schema
       if (error.message?.includes('custom_social_links') || error.message?.includes('display_order') || error.code === 'PGRST204') {
         const { custom_social_links, display_order, ...safeProfile } = profile;
-        const retryRes = await supabase.from('profiles').upsert(safeProfile).select().maybeSingle();
+        const retryRes = await supabase.from('bbq_warriors_profiles').upsert(safeProfile).select().maybeSingle();
         if (!retryRes.error && retryRes.data) {
           const resultData = {
             ...retryRes.data,
@@ -259,7 +266,7 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
   try {
     const supabase = createClient();
     let queryPromise = supabase
-      .from('articles')
+      .from('bbq_warriors_articles')
       .select('*')
       .order('display_order', { ascending: true });
 
@@ -269,10 +276,12 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
 
     let { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
-    if (error && error.message !== 'Timeout') {
+    if (error || !data || data.length === 0) {
       const fallbackRes = await supabase.from('articles').select('*').order('created_at', { ascending: false });
-      data = fallbackRes.data;
-      error = fallbackRes.error;
+      if (fallbackRes.data) {
+        data = fallbackRes.data;
+        error = fallbackRes.error;
+      }
     }
 
     if (!error && data) {

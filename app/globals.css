@@ -6,8 +6,8 @@
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-    --primary: 346.8 77.2% 49.8%;
-    --primary-foreground: 355.7 100% 97.3%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 5%;
     --secondary: 210 40% 96.1%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
@@ -16,6 +16,7 @@
   }
 }
 
+/* Original Clean Light Theme System with Blue Accents */
 body {
   background-color: #f8fafc;
   color: #0f172a;
@@ -24,13 +25,13 @@ body {
   min-height: 100vh;
 }
 
-/* Light Theme - Crisp Pure White & Crimson Red Design System */
+/* Crisp Clean Light Cards & Panels */
 .glass-panel {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid #e2e8f0;
-  box-shadow: 0 10px 30px -5px rgba(225, 29, 72, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 10px 30px -5px rgba(2, 132, 199, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
 }
 
 .glass-card {
@@ -44,26 +45,26 @@ body {
 
 .glass-card:hover {
   background: #ffffff;
-  border-color: rgba(225, 29, 72, 0.4);
+  border-color: rgba(2, 132, 199, 0.4);
   transform: translateY(-3px);
-  box-shadow: 0 14px 35px -8px rgba(225, 29, 72, 0.18), 0 4px 16px -2px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 35px -8px rgba(2, 132, 199, 0.18), 0 4px 16px -2px rgba(15, 23, 42, 0.06);
 }
 
-/* Crimson Red Glow Button */
-.btn-red-glow {
-  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+/* Electric Blue Glow Button */
+.btn-blue-glow {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
   color: #ffffff;
-  box-shadow: 0 4px 20px -2px rgba(225, 29, 72, 0.4);
+  box-shadow: 0 4px 20px -2px rgba(2, 132, 199, 0.4);
   transition: all 0.2s ease;
 }
 
-.btn-red-glow:hover {
-  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
-  box-shadow: 0 6px 24px 0 rgba(225, 29, 72, 0.6);
+.btn-blue-glow:hover {
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  box-shadow: 0 6px 24px 0 rgba(2, 132, 199, 0.6);
   transform: translateY(-1px);
 }
 
-/* Crisp Scrollbar */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -74,12 +75,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(225, 29, 72, 0.35);
+  background: rgba(2, 132, 199, 0.35);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(225, 29, 72, 0.7);
+  background: rgba(2, 132, 199, 0.7);
 }
 
 /* Animations */
@@ -92,11 +93,11 @@ body {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes pulseGlowRed {
+@keyframes pulseGlowBlue {
   0%, 100% { opacity: 0.15; transform: scale(1); }
   50% { opacity: 0.35; transform: scale(1.05); }
 }
 
-.animate-pulse-red {
-  animation: pulseGlowRed 4s ease-in-out infinite;
+.animate-pulse-blue {
+  animation: pulseGlowBlue 4s ease-in-out infinite;
 }

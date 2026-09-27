@@ -3,25 +3,25 @@ import './globals.css';
 import { PwaInstaller } from '@/components/public/pwa-installer';
 
 export const metadata: Metadata = {
-  title: 'SB19 Streaming Hub - Verified Articles & Releases',
-  description: 'Centralized directory of streaming articles for SB19 songs, albums, and campaigns created by A’TIN for A’TIN.',
+  title: 'BBQ Warriors - Josh Cullen Streaming & Music Hub',
+  description: 'Discover verified articles, embedded YouTube MVs, and official Spotify and YouTube links to stream Josh Cullen’s music.',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/icon-192.jpg',
-    apple: '/apple-touch-icon.jpg',
+    icon: '/assets/bbqwarriorslogo.jpg',
+    apple: '/assets/bbqwarriorslogo.jpg',
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'SB19 Streaming Hub',
+    title: 'BBQ Warriors',
   },
   other: {
     'mobile-web-app-capable': 'yes',
-    'application-name': 'SB19 Streaming Hub',
+    'application-name': 'BBQ Warriors',
   },
   openGraph: {
-    title: 'SB19 Streaming Hub',
-    description: 'Centralized directory of streaming articles for SB19 releases.',
+    title: 'BBQ Warriors',
+    description: 'Discover verified articles, embedded YouTube MVs, and official Spotify and YouTube links to stream Josh Cullen’s music.',
     type: 'website',
   },
 };
@@ -33,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased selection:bg-rose-500/20 selection:text-rose-900 bg-slate-50 text-slate-900">
+      <body className="antialiased selection:bg-orange-500/20 selection:text-orange-900 bg-slate-50 text-slate-900">
         {children}
         <PwaInstaller />
       </body>

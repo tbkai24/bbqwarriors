@@ -7,29 +7,24 @@ import { getStoredProfiles, getStoredArticles, fetchProfilesFromSupabase, fetchA
 import { getCloudinaryImageUrl } from '@/lib/cloudinary';
 import { PublicFooter } from '@/components/public/footer';
 import { BrandLogo } from '@/components/public/logo';
-import { CountryBreakdownModal } from '@/components/public/country-modal';
 import { SupportModal } from '@/components/public/support-modal';
-import { getCountryFlagEmoji } from '@/lib/device-detector';
-import { Search, Sparkles, ArrowRight, Music, Globe } from 'lucide-react';
+import { Search, ArrowRight, Music } from 'lucide-react';
 
 export default function PublicHomePage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [activeCountryProfile, setActiveCountryProfile] = useState<Profile | null>(null);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   const loadData = async () => {
     // 1. Initial local load
     const localProfiles = getStoredProfiles().filter(p => p.status === 'published');
     const localArticles = getStoredArticles().filter(a => a.status === 'published');
-    if (localProfiles.length > 0) {
-      setProfiles(localProfiles);
-      setArticles(localArticles);
-    }
+    setProfiles(localProfiles);
+    setArticles(localArticles);
 
-    // 2. Fetch fresh data from Supabase DB
+    // 2. Fetch fresh data strictly from Supabase DB (no hardcoded defaults)
     try {
       const dbProfiles = await fetchProfilesFromSupabase();
       const dbArticles = await fetchArticlesFromSupabase();
@@ -42,7 +37,7 @@ export default function PublicHomePage() {
       setProfiles(publishedProfs);
       setArticles(publishedArts);
     } catch {
-      // Ignore network errors, fallback to local
+      // Keep local profiles
     } finally {
       setIsLoading(false);
     }
@@ -63,9 +58,9 @@ export default function PublicHomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center px-4 py-8 sm:py-12 relative overflow-hidden">
-      {/* Soft Red & Amber ambient glow background */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-rose-500/10 blur-[140px] pointer-events-none rounded-full animate-pulse-red" />
-      <div className="fixed bottom-0 right-0 w-[450px] h-[350px] bg-amber-400/10 blur-[130px] pointer-events-none rounded-full" />
+      {/* Soft Blue & Sky Blue ambient glow background */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-sky-500/15 blur-[140px] pointer-events-none rounded-full animate-pulse-blue" />
+      <div className="fixed bottom-0 right-0 w-[450px] h-[350px] bg-blue-500/10 blur-[130px] pointer-events-none rounded-full" />
 
       {/* Top Header / Brand Bar */}
       <div className="w-full max-w-xl flex items-center justify-center mb-8 z-10">
@@ -76,27 +71,26 @@ export default function PublicHomePage() {
       <main className="w-full max-w-xl z-10 flex flex-col items-center">
         {/* Title / Hero */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold mb-3 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Verified YouTube Article Directory</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-xs font-bold mb-3 shadow-xs">
+            <span>Josh Cullen Streaming & Support Hub</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-            SB19 YouTube Streamers
+            BBQ Warriors
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed font-medium">
-            Discover and stream verified articles featuring embedded YouTube MVs.
+            Discover verified articles, embedded YouTube MVs, and official Spotify and YouTube links to stream Josh Cullen’s music.
           </p>
         </div>
 
         {/* Instant Search Bar */}
         <div className="w-full relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-rose-500" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-sky-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search SB19 MV releases"
-            className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 text-sm shadow-md transition-all font-medium"
+            placeholder="Search Josh Cullen MV releases & Spotify playlists..."
+            className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 text-sm shadow-md transition-all font-medium"
           />
         </div>
 
@@ -108,32 +102,28 @@ export default function PublicHomePage() {
               <div className="w-full h-24 bg-white border border-slate-200 rounded-2xl animate-pulse p-4 shadow-2xs" />
             </div>
           ) : profiles.length === 0 ? (
-            <div className="w-full p-8 text-center glass-panel rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-3 shadow-xs">
+            <div className="w-full p-8 text-center glass-panel rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center bg-white">
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600 mb-3 shadow-xs">
                 <Music className="w-6 h-6" />
               </div>
-              <h2 className="text-base font-bold text-slate-900">No SB19 MV releases available</h2>
-              <p className="text-xs text-slate-600 max-w-sm mt-1 font-medium">
-                There are no published release profiles available at this time. Please check back soon!
-              </p>
+              <h2 className="text-base font-bold text-slate-900">Nothing here yet.</h2>
             </div>
           ) : filteredProfiles.length === 0 ? (
-            <div className="p-8 text-center glass-panel rounded-2xl border border-slate-200 text-slate-500 text-xs font-medium">
-              No matching release profiles found for "{searchQuery}".
+            <div className="p-8 text-center glass-panel rounded-2xl border border-slate-200 text-slate-500 text-xs font-medium bg-white">
+              Nothing here yet.
             </div>
           ) : (
             filteredProfiles.map((profile) => {
               const count = getArticleCount(profile.id);
-              const topCountries = Object.keys(profile.country_breakdown || {}).slice(0, 3);
               return (
                 <div
                   key={profile.id}
-                  className="group relative block w-full rounded-2xl overflow-hidden glass-card p-4 border border-slate-200/90 hover:border-rose-400 shadow-sm hover:shadow-md transition-all"
+                  className="group relative block w-full rounded-2xl overflow-hidden glass-card p-4 border border-slate-200/90 hover:border-sky-400 shadow-sm hover:shadow-md transition-all bg-white"
                 >
                   <Link href={`/profile/${profile.slug}`} className="block">
                     <div className="flex items-center gap-4">
                       {/* Image / Avatar */}
-                      <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                      <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 flex items-center justify-center">
                         {profile.cover_image || profile.profile_image ? (
                           <img
                             src={getCloudinaryImageUrl(profile.profile_image || profile.cover_image || '', { width: 200 })}
@@ -149,24 +139,22 @@ export default function PublicHomePage() {
 
                       {/* Meta info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-lg font-bold text-slate-900 group-hover:text-rose-600 transition-colors">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h2 className="font-bold text-slate-900 text-sm sm:text-base truncate group-hover:text-sky-600 transition-colors">
                             {profile.title}
                           </h2>
-                          <span className="px-2 py-0.5 rounded-md bg-rose-50 text-[11px] font-bold text-rose-700 border border-rose-200">
-                            {count} {count === 1 ? 'article' : 'articles'}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 shrink-0">
+                            {count} articles
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600 line-clamp-1 mt-0.5 font-medium">
-                          {profile.description}
+                        <p className="text-xs text-slate-500 line-clamp-2 font-medium">
+                          {profile.description || 'Compilation of Josh Cullen MV embeds & official Spotify tracks.'}
                         </p>
                       </div>
 
-                      {/* Red Arrow CTA */}
-                      <div className="shrink-0">
-                        <div className="p-2.5 rounded-full bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-sm transition-all group-hover:translate-x-1">
-                          <ArrowRight className="w-4 h-4" />
-                        </div>
+                      {/* Arrow Icon Button */}
+                      <div className="w-9 h-9 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-sky-600 transition-all shadow-xs">
+                        <ArrowRight className="w-4 h-4" />
                       </div>
                     </div>
                   </Link>
@@ -176,31 +164,14 @@ export default function PublicHomePage() {
           )}
         </div>
 
-        {(() => {
-          const supportProfile = profiles.find(p => (p.support_qr_options && p.support_qr_options.length > 0) || p.support_qr_image) || profiles[0] || null;
-          return (
-            <>
-              <PublicFooter onOpenSupport={supportProfile ? () => setIsSupportModalOpen(true) : undefined} />
-              {supportProfile && (
-                <SupportModal
-                  profile={supportProfile}
-                  isOpen={isSupportModalOpen}
-                  onClose={() => setIsSupportModalOpen(false)}
-                />
-              )}
-            </>
-          );
-        })()}
+        {/* Footer */}
+        <PublicFooter onOpenSupport={() => setIsSupportModalOpen(true)} />
       </main>
 
-      {/* Floating Country Breakdown Modal */}
-      <CountryBreakdownModal
-        isOpen={!!activeCountryProfile}
-        onClose={() => setActiveCountryProfile(null)}
-        countryBreakdown={activeCountryProfile?.country_breakdown}
-        profileTitle={activeCountryProfile?.title}
-      />
+      {/* Support Modal */}
+      {isSupportModalOpen && (
+        <SupportModal isOpen={isSupportModalOpen} onClose={() => setIsSupportModalOpen(false)} />
+      )}
     </div>
   );
 }
-

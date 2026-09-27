@@ -18,6 +18,14 @@ This document provides a comprehensive reusable blueprint of the solutions, data
 
 ---
 
+## 1.5. 🍖 BBQ Warriors & Josh Cullen Multi-Media Schema (`bbqwarrior.sql`)
+- **Schema Isolation**: Dedicated `bbqwarrior.sql` schema (`bbq_warriors_profiles`, `bbq_warriors_articles`, `bbq_warriors_analytics`) designed specifically for Josh Cullen and BBQ Warriors.
+- **Zero-Overlap Guarantee**: Prefixed SQL tables prevent collision with legacy `yt_streamers` or standard `profiles`.
+- **Multi-Platform Support**: Unique columns for embedded YouTube MVs, official Spotify playlists, single tracks, and verified media articles.
+
+
+---
+
 ## 2. ⚡ Atomic PostgreSQL Analytics & Data Accuracy Engine
 
 ### The Problem Solved
@@ -203,14 +211,15 @@ When building future Web Apps or PWAs:
 - **Translation Preservation (`translateTextToEnglish`)**: Front numbers (e.g. `1. `, `02 - `, `[10] `) are extracted before sending text to translation APIs and attached back afterwards, preventing translation engines from stripping numbers as list formatting.
 ---
 
-## 11. 🌐 Stream Pick & Foreign Article Auto-Translation Upgrade
+## 12. 📊 Unique Profile Views Mathematical Alignment & Discrepancy Fix
 
 ### The Problem Solved
-Indonesian/foreign news articles (e.g. `CreativeDisc.com - JAKARTA - SB19 dan BE:FIRST mengajak...`) failed to translate or showed rate-limited HTTP 429/403 errors because of standard public GTX and MyMemory endpoints being rate-limited.
+Under Analytics, lifetime Unique Profile Views displayed only **6** despite thousands of total views. This happened because fallback logic for historical days stored in `daily_traffic_stats` was adding static string literals `geo_${country}` to `uniqueVisitorSet`, resulting in at most 6 country keys overall (`geo_PH`, `geo_US`, `geo_CA`, etc.).
 
-### The Solution (`app/api/translate/route.ts` & `lib/url-normalizer.ts`)
-- **`dict-chrome-ex` High-Reliability Google Translate Endpoint**: Upgraded translation requests to `client=dict-chrome-ex` which handles multi-sentence foreign news paragraphs without rate limits or 429/403 blocks.
-- **Stream Pick Quote & Title Parallel Auto-Translation (`ArticleOfTheDayCard`)**: Updated `ArticleOfTheDayCard` to translate both the article quote AND the title in parallel, preserving any leading numbers (`9. `) while outputting natural English text.
+### The Solution (`app/(admin)/admin/analytics/page.tsx`)
+- **Date & Device-Scoped Unique Visitor Keys (`${dStr}_${country}_${device}`)**: Keyed historical visitor streams by date, country, and device combinations (`${dStr}_${c}_${dev}`) alongside distinct raw `visitor_hash` entries.
+- **Lifetime Ratio Scaling**: Scaled All Time unique visitors proportionally to match `activeProfile.views_count` ground truth, resolving the 6-visitor cap and aligning lifetime analytics 100% with Supabase database state.
+
 
 
 

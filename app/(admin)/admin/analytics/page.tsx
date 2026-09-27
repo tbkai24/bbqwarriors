@@ -211,16 +211,36 @@ export default function AnalyticsAdminPage() {
     const dayClicks = Math.max(dayClickEvents.length, dayClicksFromStat);
     totalClicksSum += dayClicks;
 
-    // Option B: Strict Deduplicated Unique Visitors across the date range
-    dayViewEvents.forEach(e => {
-      uniqueVisitorSet.add(e.visitor_hash || `${e.country || 'PH'}_${e.device || 'mobile'}`);
-    });
-    if (dayViewEvents.length === 0 && dayViewsFromStat > 0) {
-      // Aggregate distinct visitor estimate from country/device breakdown
-      const cd = dayStat?.country_breakdown || {};
-      Object.keys(cd).forEach(c => {
-        uniqueVisitorSet.add(`geo_${c}`);
+    // Deduplicated Unique Visitors across the date range
+    if (dayViewEvents.length > 0) {
+      dayViewEvents.forEach(e => {
+        if (e.visitor_hash) {
+          uniqueVisitorSet.add(e.visitor_hash);
+        } else {
+          uniqueVisitorSet.add(`${dStr}_${e.country || 'PH'}_${e.device || 'mobile'}`);
+        }
       });
+    } else if (dayStat) {
+      const cd = dayStat.country_breakdown || {};
+      const devMap = dayStat.device_breakdown || {};
+      const countries = Object.keys(cd);
+      const devices = Object.keys(devMap);
+
+      if (countries.length > 0) {
+        countries.forEach(c => {
+          if (devices.length > 0) {
+            devices.forEach(dev => {
+              if ((cd[c] || 0) > 0 && (devMap[dev] || 0) > 0) {
+                uniqueVisitorSet.add(`${dStr}_${c}_${dev}`);
+              }
+            });
+          } else {
+            uniqueVisitorSet.add(`${dStr}_${c}`);
+          }
+        });
+      } else if (dayViewsFromStat > 0) {
+        uniqueVisitorSet.add(`${dStr}_stat_views`);
+      }
     }
 
     // Devices for this day
@@ -291,6 +311,11 @@ export default function AnalyticsAdminPage() {
   if (timeRange === 'all' || isFullHistoryIncluded) {
     displayViews = Math.max(totalViews, displayViews);
     displayClicks = Math.max(totalClicks, displayClicks);
+    if (displayViews > 0) {
+      const ratio = displayViews > totalViewsSum && totalViewsSum > 0 ? (displayViews / totalViewsSum) : 1;
+      uniqueVisitorsCount = Math.max(uniqueVisitorsCount, Math.round(uniqueVisitorSet.size * ratio));
+      uniqueVisitorsCount = Math.min(uniqueVisitorsCount, displayViews);
+    }
   }
 
   // Scale Visitor Devices to match displayViews so sum equals Total Profile Views

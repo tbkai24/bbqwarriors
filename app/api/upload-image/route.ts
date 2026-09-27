@@ -6,11 +6,11 @@ export async function POST(req: NextRequest) {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'sb19_preset';
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'bbqwarriors_preset';
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
-    const folder = (formData.get('folder') as string) || 'SB19/uploads';
+    const folder = (formData.get('folder') as string) || 'BBQWarriors/uploads';
 
     if (!file) {
       return NextResponse.json({ error: 'No image file provided' }, { status: 400 });
