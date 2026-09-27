@@ -301,7 +301,7 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
 
         {/* Featured Official MV Video Player */}
         {(() => {
-          const featuredYtId = extractYouTubeId(profile.featured_video_url || profile.youtube_url);
+          const featuredYtId = extractYouTubeId(profile.featured_video_url || (profile as any).embedded_youtube_mv_url || profile.youtube_url);
           if (!featuredYtId) return null;
           return (
             <div className="w-full mt-5 mb-1 space-y-2">

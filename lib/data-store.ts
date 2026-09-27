@@ -149,12 +149,7 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
       const localProfiles = getStoredProfiles();
       const merged = (data as Profile[]).map((sp, idx) => {
         const lp = localProfiles.find(p => p.id === sp.id || (p as any).bbq_warrior_id === (sp as any).bbq_warrior_id);
-        const isSpVideo = Boolean(sp.youtube_url && (sp.youtube_url.includes('watch?v=') || sp.youtube_url.includes('youtu.be/')));
-        const isLpVideo = Boolean(lp?.youtube_url && (lp.youtube_url.includes('watch?v=') || lp.youtube_url.includes('youtu.be/')));
-        const cleanYt = isSpVideo
-          ? (!isLpVideo && lp?.youtube_url ? lp.youtube_url : 'https://www.youtube.com/@JoshCullenOfficial')
-          : sp.youtube_url || (sp as any).embedded_youtube_mv_url || 'https://www.youtube.com/@JoshCullenOfficial';
-
+        const validVideoUrl = sp.featured_video_url || (sp as any).embedded_youtube_mv_url || (sp.youtube_url && sp.youtube_url.includes('v=') ? sp.youtube_url : null) || lp?.featured_video_url || null;
         const computedSlug = sp.slug || sp.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `profile-${sp.id.substring(0, 6)}`;
         const computedStatus = sp.status || 'published';
 
@@ -162,7 +157,9 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
           ...sp,
           slug: computedSlug,
           status: computedStatus,
-          youtube_url: cleanYt,
+          featured_video_url: validVideoUrl,
+          embedded_youtube_mv_url: validVideoUrl,
+          youtube_url: validVideoUrl || (sp as any).official_youtube_channel_url || 'https://www.youtube.com/@JoshCullenOfficial',
           display_order: sp.display_order ?? lp?.display_order ?? idx + 1,
           custom_social_links: sp.custom_social_links ?? lp?.custom_social_links ?? null,
         };
@@ -185,6 +182,7 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
   const profilePayload = {
     ...profile,
     bbq_warrior_id: bbqWarriorId,
+    embedded_youtube_mv_url: profile.featured_video_url || (profile as any).embedded_youtube_mv_url || profile.youtube_url || null,
   };
 
   // Always update local storage first so local changes persist seamlessly
