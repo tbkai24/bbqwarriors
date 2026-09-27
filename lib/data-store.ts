@@ -479,7 +479,7 @@ export async function fetchSubmissionsFromSupabase(): Promise<ArticleSubmission[
   try {
     const supabase = createClient();
     const queryPromise = supabase
-      .from('article_submissions')
+      .from('bbq_warriors_submissions')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -504,7 +504,7 @@ export async function approveSubmissionInSupabase(sub: ArticleSubmission, newArt
   try {
     const supabase = createClient();
     await supabase.from('bbq_warriors_articles').upsert(newArt);
-    await supabase.from('article_submissions').update({
+    await supabase.from('bbq_warriors_submissions').update({
       status: 'approved',
       reviewed_at: new Date().toISOString()
     }).eq('id', sub.id);
@@ -516,7 +516,7 @@ export async function approveSubmissionInSupabase(sub: ArticleSubmission, newArt
 export async function updateSubmissionStatusInSupabase(subId: string, status: 'rejected' | 'duplicate', notes?: string) {
   try {
     const supabase = createClient();
-    await supabase.from('article_submissions').update({
+    await supabase.from('bbq_warriors_submissions').update({
       status,
       notes: notes || null,
       reviewed_at: new Date().toISOString()
@@ -529,7 +529,7 @@ export async function updateSubmissionStatusInSupabase(subId: string, status: 'r
 export async function updateSubmissionInSupabase(sub: ArticleSubmission) {
   try {
     const supabase = createClient();
-    await supabase.from('article_submissions').upsert(sub);
+    await supabase.from('bbq_warriors_submissions').upsert(sub);
   } catch (err) {
     console.error('Error updating submission in Supabase:', err);
   }
@@ -545,7 +545,7 @@ export async function deleteSubmissionFromSupabase(subId: string): Promise<{ suc
   try {
     const supabase = createClient();
     const { error } = await supabase
-      .from('article_submissions')
+      .from('bbq_warriors_submissions')
       .delete()
       .eq('id', subId);
 
@@ -619,7 +619,7 @@ export async function submitArticleLink(
     const supabase = createClient();
     const [dbArtRes, dbSubRes] = await Promise.all([
       supabase.from('bbq_warriors_articles').select('article_url, canonical_url, title'),
-      supabase.from('article_submissions').select('article_url, canonical_url, title').in('status', ['pending', 'approved'])
+      supabase.from('bbq_warriors_submissions').select('article_url, canonical_url, title').in('status', ['pending', 'approved'])
     ]);
 
     if (dbArtRes.data && dbArtRes.data.length > 0) {
@@ -666,7 +666,7 @@ export async function submitArticleLink(
   // Sync to Supabase DB
   try {
     const supabase = createClient();
-    await supabase.from('article_submissions').insert(newSubmission);
+    await supabase.from('bbq_warriors_submissions').insert(newSubmission);
   } catch {
     // Ignore
   }

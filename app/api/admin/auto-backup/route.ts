@@ -25,12 +25,12 @@ async function handleBackup(req: NextRequest) {
       Authorization: `Bearer ${supabaseKey}`,
     };
 
-    // 1. Fetch data from Supabase DB
+    // 1. Fetch data from Supabase DB strictly from BBQ Warriors tables
     const [profilesRes, articlesRes, subsRes, trafficRes, notifsRes] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/profiles?select=*`, { headers, cache: 'no-store' }),
-      fetch(`${supabaseUrl}/rest/v1/articles?select=*`, { headers, cache: 'no-store' }),
-      fetch(`${supabaseUrl}/rest/v1/article_submissions?select=*`, { headers, cache: 'no-store' }),
-      fetch(`${supabaseUrl}/rest/v1/daily_traffic_stats?select=*&limit=100`, { headers, cache: 'no-store' }),
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_profiles?select=*`, { headers, cache: 'no-store' }),
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_articles?select=*`, { headers, cache: 'no-store' }),
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_submissions?select=*`, { headers, cache: 'no-store' }),
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_analytics?select=*&limit=100`, { headers, cache: 'no-store' }),
       fetch(`${supabaseUrl}/rest/v1/notifications?select=*&limit=50`, { headers, cache: 'no-store' }),
     ]);
 
