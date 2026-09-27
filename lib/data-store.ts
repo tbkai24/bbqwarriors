@@ -148,15 +148,20 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
 
       const localProfiles = getStoredProfiles();
       const merged = (data as Profile[]).map((sp, idx) => {
-        const lp = localProfiles.find(p => p.id === sp.id);
+        const lp = localProfiles.find(p => p.id === sp.id || (p as any).bbq_warrior_id === (sp as any).bbq_warrior_id);
         const isSpVideo = Boolean(sp.youtube_url && (sp.youtube_url.includes('watch?v=') || sp.youtube_url.includes('youtu.be/')));
         const isLpVideo = Boolean(lp?.youtube_url && (lp.youtube_url.includes('watch?v=') || lp.youtube_url.includes('youtu.be/')));
         const cleanYt = isSpVideo
           ? (!isLpVideo && lp?.youtube_url ? lp.youtube_url : 'https://www.youtube.com/@JoshCullenOfficial')
           : sp.youtube_url || (sp as any).embedded_youtube_mv_url || 'https://www.youtube.com/@JoshCullenOfficial';
 
+        const computedSlug = sp.slug || sp.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `profile-${sp.id.substring(0, 6)}`;
+        const computedStatus = sp.status || 'published';
+
         return {
           ...sp,
+          slug: computedSlug,
+          status: computedStatus,
           youtube_url: cleanYt,
           display_order: sp.display_order ?? lp?.display_order ?? idx + 1,
           custom_social_links: sp.custom_social_links ?? lp?.custom_social_links ?? null,

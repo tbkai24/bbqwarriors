@@ -64,8 +64,11 @@ CREATE POLICY "Enable all for bbq_warriors_articles" ON public.bbq_warriors_arti
 CREATE POLICY "Enable all for bbq_warriors_analytics" ON public.bbq_warriors_analytics FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all for bbq_warriors_submissions" ON public.bbq_warriors_submissions FOR ALL USING (true) WITH CHECK (true);
 
--- 5. Delete seed profile from table if present
+-- 5. Delete seed profile if present & fix missing status or slug defaults
 DELETE FROM public.bbq_warriors_profiles WHERE slug = 'josh-cullen' OR title = 'BBQ Warriors';
+ALTER TABLE public.bbq_warriors_profiles ALTER COLUMN status SET DEFAULT 'published';
+UPDATE public.bbq_warriors_profiles SET status = 'published' WHERE status IS NULL;
+UPDATE public.bbq_warriors_profiles SET slug = LOWER(REGEXP_REPLACE(title, '[^a-zA-Z0-9]+', '-', 'g')) WHERE slug IS NULL AND title IS NOT NULL;
 
 -- 6. Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

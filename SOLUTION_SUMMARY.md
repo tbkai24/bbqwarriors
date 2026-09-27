@@ -232,6 +232,19 @@ During admin authentication on `/admin/login`, browser network interruptions or 
 - **Instant Local Admin Login Button**: Added a dedicated 1-click fallback button on `/admin/login` for instant offline/emergency admin access.
 - **Primary BBQ Warriors Table Targeting**: Updated `saveArticleToSupabase`, `updateArticleStatusInSupabase`, `updateProfilesOrderInSupabase`, `updateArticlesOrderInSupabase`, `deleteArticleFromSupabase`, and `deleteProfileFromSupabase` to target `bbq_warriors_articles` and `bbq_warriors_profiles` first, with graceful fallback to `articles`/`profiles`.
 
+---
+
+## 14. 🍖 BBQ Warriors Profile Fetching & RLS Policy Synchronization
+
+### 1. The Problem Solved
+When rows were added manually in the Supabase Table Editor under `Role: postgres`, the production app (`https://bbqwarriors.vercel.app/admin`) queried Supabase using the browser `Role: anon`. If Row-Level Security (RLS) policies were not enabled for `anon` access or if fields like `status` or `slug` were left `NULL`, Supabase blocked the queries or returned empty arrays (`data: []`), causing the admin dashboard to render "No Active Profile".
+
+### 2. The Solution (`lib/data-store.ts`, `app/api/public/data/route.ts`, `supabase/migrations/20260928000000_...sql`)
+- **Automatic Fallback for `slug` & `status`**: In `lib/data-store.ts`, if `sp.slug` or `sp.status` is `NULL` (e.g. manually added rows), it automatically computes `slug` from `title` (e.g. `Like Mw MV` -> `like-mw-mv`) and defaults `status` to `'published'`.
+- **Edge API Fetch Query (`app/api/public/data/route.ts`)**: Updated the REST query filter to `?select=*&or=(status.eq.published,status.is.null)&order=created_at.desc`, ensuring manual rows with `NULL` status are not hidden from public or admin data calls.
+- **Supabase Migration RLS Policies**: Created PostgreSQL migration script `supabase/migrations/20260928000000_add_custom_social_links_to_bbq_warriors_profiles.sql` enabling `FOR ALL` RLS policies (`USING (true) WITH CHECK (true)`) on `bbq_warriors_profiles`, `bbq_warriors_articles`, `bbq_warriors_analytics`, and `bbq_warriors_submissions`.
+
+
 
 
 
