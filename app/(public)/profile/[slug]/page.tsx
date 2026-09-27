@@ -156,7 +156,7 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
 
       if (!supabaseMatch) {
         const supabase = createClient();
-        const { data: directProfile } = await supabase.from('profiles').select('*').ilike('slug', slug).maybeSingle();
+        const { data: directProfile } = await supabase.from('bbq_warriors_profiles').select('*').ilike('slug', slug).maybeSingle();
         if (directProfile) supabaseMatch = directProfile as Profile;
       }
 

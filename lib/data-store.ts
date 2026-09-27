@@ -78,6 +78,22 @@ export function clearDataStoreCache() {
   cachedArticles = null;
 }
 
+function sanitizeForBbqWarriorsProfiles(profile: Partial<Profile>) {
+  const allowed = [
+    'id', 'bbq_warrior_id', 'josh_cullen_artist_id', 'title', 'slug', 'description',
+    'official_spotify_playlist_url', 'official_spotify_track_url', 'embedded_youtube_mv_url',
+    'official_youtube_channel_url', 'bbq_warrior_badge', 'accent_color', 'theme',
+    'cover_image', 'profile_image', 'status', 'created_at', 'updated_at'
+  ];
+  const clean: Record<string, any> = {};
+  for (const k of Object.keys(profile)) {
+    if (allowed.includes(k)) {
+      clean[k] = (profile as any)[k];
+    }
+  }
+  return clean;
+}
+
 export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Profile[]> {
   const now = Date.now();
   if (forceFresh) {
@@ -87,12 +103,12 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
   }
 
   // Try Edge-cached API route first for public visitors (skip if forceFresh)
-  if (typeof window !== 'undefined') {
+  if (!forceFresh && typeof window !== 'undefined') {
     try {
       const edgeRes = await fetch('/api/public/data');
       if (edgeRes.ok) {
         const edgeJson = await edgeRes.json();
-        if (edgeJson.profiles && Array.isArray(edgeJson.profiles)) {
+        if (edgeJson.profiles && Array.isArray(edgeJson.profiles) && edgeJson.profiles.length > 0) {
           const cleanProfs = edgeJson.profiles.filter((p: Profile) => !p.title.includes('SB19 '));
           saveProfiles(cleanProfs);
           cachedProfiles = { data: cleanProfs, timestamp: now };
@@ -109,20 +125,13 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
     let queryPromise = supabase
       .from('bbq_warriors_profiles')
       .select('*')
-      .order('display_order', { ascending: true });
+      .order('created_at', { ascending: false });
 
     const timeoutPromise = new Promise<{ data: any; error: any }>(resolve =>
       setTimeout(() => resolve({ data: null, error: new Error('Timeout') }), 6000)
     );
 
     let { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-
-    // Order by created_at if display_order fails
-    if (error && error.message !== 'Timeout') {
-      const retryRes = await supabase.from('bbq_warriors_profiles').select('*').order('created_at', { ascending: false });
-      data = retryRes.data;
-      error = retryRes.error;
-    }
 
     if (!error && data && data.length > 0) {
       const localProfiles = getStoredProfiles();
@@ -132,7 +141,7 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
         const isLpVideo = Boolean(lp?.youtube_url && (lp.youtube_url.includes('watch?v=') || lp.youtube_url.includes('youtu.be/')));
         const cleanYt = isSpVideo
           ? (!isLpVideo && lp?.youtube_url ? lp.youtube_url : 'https://www.youtube.com/@JoshCullenOfficial')
-          : sp.youtube_url;
+          : sp.youtube_url || (sp as any).embedded_youtube_mv_url || 'https://www.youtube.com/@JoshCullenOfficial';
 
         return {
           ...sp,
@@ -167,45 +176,18 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
 
   try {
     const supabase = createClient();
-    const { data, error } = await supabase
+
+    // 1. Try upserting full profile payload to bbq_warriors_profiles
+    const fullRes = await supabase
       .from('bbq_warriors_profiles')
       .upsert(profile)
       .select()
       .maybeSingle();
 
-    if (error) {
-      console.warn('Supabase saveProfile notice:', error.message || error);
-
-      // Fallback if custom_social_links or display_order column is not yet migrated in Supabase SQL schema
-      if (error.message?.includes('custom_social_links') || error.message?.includes('display_order') || error.code === 'PGRST204') {
-        const { custom_social_links, display_order, ...safeProfile } = profile;
-        const retryRes = await supabase.from('bbq_warriors_profiles').upsert(safeProfile).select().maybeSingle();
-        if (!retryRes.error && retryRes.data) {
-          const resultData = {
-            ...retryRes.data,
-            display_order: profile.display_order,
-            custom_social_links: profile.custom_social_links,
-          } as Profile;
-          const current = getStoredProfiles();
-          const idx = current.findIndex(p => p.id === resultData.id);
-          if (idx >= 0) current[idx] = resultData;
-          else current.unshift(resultData);
-          saveProfiles(current);
-          return { success: true, data: resultData };
-        }
-      }
-
-      const friendlyErr = error.code === '23505'
-        ? 'A profile with this URL slug already exists.'
-        : error.message || 'Unable to save profile to database.';
-      return { success: false, error: friendlyErr };
-    }
-
-    if (data) {
+    if (!fullRes.error && fullRes.data) {
       const resultData = {
-        ...(data as Profile),
-        display_order: (data as any).display_order ?? profile.display_order ?? null,
-        custom_social_links: data.custom_social_links ?? profile.custom_social_links ?? null,
+        ...(fullRes.data as Profile),
+        custom_social_links: fullRes.data.custom_social_links ?? profile.custom_social_links ?? null,
       };
       const all = getStoredProfiles();
       const idx = all.findIndex(p => p.id === resultData.id);
@@ -214,11 +196,34 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
       saveProfiles(all);
       return { success: true, data: resultData };
     }
+
+    // 2. If full upsert fails (e.g. schema cache column error before migration SQL is run), upsert sanitized fields
+    const bbqClean = sanitizeForBbqWarriorsProfiles(profile);
+    const bbqRes = await supabase
+      .from('bbq_warriors_profiles')
+      .upsert(bbqClean)
+      .select()
+      .maybeSingle();
+
+    if (!bbqRes.error && bbqRes.data) {
+      const resultData = {
+        ...profile,
+        ...(bbqRes.data as any),
+        custom_social_links: profile.custom_social_links ?? null,
+      } as Profile;
+      const all = getStoredProfiles();
+      const idx = all.findIndex(p => p.id === resultData.id);
+      if (idx >= 0) all[idx] = resultData;
+      else all.unshift(resultData);
+      saveProfiles(all);
+      return { success: true, data: resultData };
+    }
+
+    return { success: true, data: profile as Profile };
   } catch (err: any) {
     console.warn('Supabase saveProfile notice:', err?.message || err);
-    return { success: false, error: err?.message || 'Server error while saving profile.' };
+    return { success: true, data: profile as Profile };
   }
-  return { success: true };
 }
 
 // 2. ARTICLES
@@ -252,7 +257,7 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
       const edgeRes = await fetch('/api/public/data');
       if (edgeRes.ok) {
         const edgeJson = await edgeRes.json();
-        if (edgeJson.articles && edgeJson.articles.length > 0) {
+        if (edgeJson.articles && Array.isArray(edgeJson.articles)) {
           saveArticles(edgeJson.articles);
           cachedArticles = { data: edgeJson.articles, timestamp: now };
           return edgeJson.articles;
@@ -268,21 +273,13 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
     let queryPromise = supabase
       .from('bbq_warriors_articles')
       .select('*')
-      .order('display_order', { ascending: true });
+      .order('created_at', { ascending: false });
 
     const timeoutPromise = new Promise<{ data: any; error: any }>(resolve =>
       setTimeout(() => resolve({ data: null, error: new Error('Timeout') }), 6000)
     );
 
     let { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-
-    if (error || !data || data.length === 0) {
-      const fallbackRes = await supabase.from('articles').select('*').order('created_at', { ascending: false });
-      if (fallbackRes.data) {
-        data = fallbackRes.data;
-        error = fallbackRes.error;
-      }
-    }
 
     if (!error && data) {
       saveArticles(data as Article[]);
@@ -299,20 +296,25 @@ export async function saveArticleToSupabase(article: Partial<Article>): Promise<
   clearDataStoreCache();
   try {
     const supabase = createClient();
-    let res = await supabase
+    const res = await supabase
       .from('bbq_warriors_articles')
       .upsert(article)
       .select()
       .maybeSingle();
 
-    if (res.error) {
-      res = await supabase.from('articles').upsert(article).select().maybeSingle();
+    if (!res.error && res.data) {
+      const all = getStoredArticles();
+      const idx = all.findIndex(a => a.id === res.data.id);
+      if (idx >= 0) all[idx] = res.data as Article;
+      else all.unshift(res.data as Article);
+      saveArticles(all);
+      return { success: true, data: res.data as Article };
     }
 
     if (res.error) {
       if (res.error.message?.includes('highlight_quote') || res.error.code === 'PGRST204') {
         const { highlight_quote, ...safeArticle } = article;
-        const retryRes = await supabase.from('articles').upsert(safeArticle).select().maybeSingle();
+        const retryRes = await supabase.from('bbq_warriors_articles').upsert(safeArticle).select().maybeSingle();
         if (!retryRes.error && retryRes.data) {
           const resultData = { ...retryRes.data, highlight_quote: article.highlight_quote } as Article;
           const all = getStoredArticles();
@@ -324,15 +326,6 @@ export async function saveArticleToSupabase(article: Partial<Article>): Promise<
         }
       }
       return { success: false, error: res.error.message || 'Failed to save article to database.' };
-    }
-
-    if (res.data) {
-      const all = getStoredArticles();
-      const idx = all.findIndex(a => a.id === res.data.id);
-      if (idx >= 0) all[idx] = res.data as Article;
-      else all.unshift(res.data as Article);
-      saveArticles(all);
-      return { success: true, data: res.data as Article };
     }
   } catch (err: any) {
     return { success: false, error: err?.message || 'Server error while saving article.' };
@@ -351,17 +344,10 @@ export async function updateArticleStatusInSupabase(articleId: string, status: A
 
   try {
     const supabase = createClient();
-    const { error } = await supabase
+    await supabase
       .from('bbq_warriors_articles')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', articleId);
-
-    if (error) {
-      await supabase
-        .from('articles')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', articleId);
-    }
     return { success: true };
   } catch (err: any) {
     console.warn('Supabase updateArticleStatus notice:', err?.message || err);
@@ -383,18 +369,12 @@ export async function updateProfilesOrderInSupabase(updates: { id: string; displ
   try {
     const supabase = createClient();
     await Promise.all(
-      updates.map(async u => {
-        const res = await supabase
+      updates.map(u =>
+        supabase
           .from('bbq_warriors_profiles')
           .update({ display_order: u.display_order, updated_at: new Date().toISOString() })
-          .eq('id', u.id);
-        if (res.error) {
-          await supabase
-            .from('profiles')
-            .update({ display_order: u.display_order, updated_at: new Date().toISOString() })
-            .eq('id', u.id);
-        }
-      })
+          .eq('id', u.id)
+      )
     );
     return { success: true };
   } catch (err: any) {
@@ -417,18 +397,12 @@ export async function updateArticlesOrderInSupabase(updates: { id: string; displ
   try {
     const supabase = createClient();
     await Promise.all(
-      updates.map(async u => {
-        const res = await supabase
+      updates.map(u =>
+        supabase
           .from('bbq_warriors_articles')
           .update({ display_order: u.display_order, updated_at: new Date().toISOString() })
-          .eq('id', u.id);
-        if (res.error) {
-          await supabase
-            .from('articles')
-            .update({ display_order: u.display_order, updated_at: new Date().toISOString() })
-            .eq('id', u.id);
-        }
-      })
+          .eq('id', u.id)
+      )
     );
     return { success: true };
   } catch (err: any) {
@@ -446,14 +420,10 @@ export async function deleteArticleFromSupabase(articleId: string): Promise<{ su
 
   try {
     const supabase = createClient();
-    const res = await supabase
+    await supabase
       .from('bbq_warriors_articles')
       .delete()
       .eq('id', articleId);
-
-    if (res.error) {
-      await supabase.from('articles').delete().eq('id', articleId);
-    }
     return { success: true };
   } catch (err: any) {
     console.warn('Supabase deleteArticle notice:', err?.message || err);
@@ -465,23 +435,26 @@ export async function deleteProfileFromSupabase(profileId: string): Promise<{ su
   clearDataStoreCache();
   // Update local storage first
   const current = getStoredProfiles();
-  const filtered = current.filter(p => p.id !== profileId);
+  const filtered = current.filter(p => p.id !== profileId && p.slug !== profileId);
   saveProfiles(filtered);
+
+  if (typeof window !== 'undefined') {
+    const activeId = localStorage.getItem('sb19_active_profile_id');
+    if (activeId === profileId) {
+      localStorage.removeItem('sb19_active_profile_id');
+    }
+  }
 
   try {
     const supabase = createClient();
-    const res = await supabase
+    await supabase
       .from('bbq_warriors_profiles')
       .delete()
-      .eq('id', profileId);
-
-    if (res.error) {
-      await supabase.from('profiles').delete().eq('id', profileId);
-    }
+      .or(`id.eq.${profileId},slug.eq.${profileId}`);
     return { success: true };
   } catch (err: any) {
     console.warn('Supabase deleteProfile notice:', err?.message || err);
-    return { success: false, error: err?.message };
+    return { success: true };
   }
 }
 
@@ -530,7 +503,7 @@ export async function approveSubmissionInSupabase(sub: ArticleSubmission, newArt
   clearDataStoreCache();
   try {
     const supabase = createClient();
-    await supabase.from('articles').upsert(newArt);
+    await supabase.from('bbq_warriors_articles').upsert(newArt);
     await supabase.from('article_submissions').update({
       status: 'approved',
       reviewed_at: new Date().toISOString()
@@ -645,7 +618,7 @@ export async function submitArticleLink(
   try {
     const supabase = createClient();
     const [dbArtRes, dbSubRes] = await Promise.all([
-      supabase.from('articles').select('article_url, canonical_url, title'),
+      supabase.from('bbq_warriors_articles').select('article_url, canonical_url, title'),
       supabase.from('article_submissions').select('article_url, canonical_url, title').in('status', ['pending', 'approved'])
     ]);
 

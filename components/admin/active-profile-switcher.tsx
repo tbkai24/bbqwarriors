@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Profile, ArticleSubmission } from '@/types/database';
-import { updateProfilesOrderInSupabase } from '@/lib/data-store';
-import { ChevronDown, Plus, Check, Layers, GripVertical } from 'lucide-react';
+import { updateProfilesOrderInSupabase, deleteProfileFromSupabase } from '@/lib/data-store';
+import { ChevronDown, Plus, Check, Layers, GripVertical, Trash2 } from 'lucide-react';
 
 // Props for ActiveProfileSwitcher component
 interface ProfileSwitcherProps {
@@ -182,6 +182,21 @@ export function ActiveProfileSwitcher({
                       </span>
                     )}
                     {isSelected && <Check className="w-4 h-4 text-rose-600 shrink-0" />}
+
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Are you sure you want to delete profile "${profile.title}"?`)) {
+                          await deleteProfileFromSupabase(profile.id);
+                          if (onRefreshData) onRefreshData();
+                        }
+                      }}
+                      className="p-1 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Delete this profile"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               );

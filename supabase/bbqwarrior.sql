@@ -44,6 +44,21 @@ CREATE TABLE IF NOT EXISTS public.bbq_warriors_profiles (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- BBQ WARRIORS PROFILES COLUMNS MIGRATIONS
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS custom_social_links JSONB;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS display_order INT DEFAULT 0;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS support_qr_options JSONB;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS youtube_url TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS facebook_url TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS instagram_url TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS x_url TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS threads_url TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS website_url TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS featured_video_url TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS support_qr_image TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS support_title TEXT;
+ALTER TABLE public.bbq_warriors_profiles ADD COLUMN IF NOT EXISTS support_note TEXT;
+
 -- 2. BBQ WARRIORS ARTICLES TABLE (bbq_warriors_articles)
 -- Stores verified articles, embedded YouTube MVs, and Spotify streaming links
 CREATE TABLE IF NOT EXISTS public.bbq_warriors_articles (

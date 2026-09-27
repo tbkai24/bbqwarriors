@@ -15,11 +15,11 @@ export async function GET() {
   try {
     // Query strictly BBQ Warriors isolated tables with Edge CDN Revalidation (60s SWR)
     const [profilesRes, articlesRes] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_profiles?select=*&status=eq.published&order=display_order.asc`, {
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_profiles?select=*&status=eq.published&order=created_at.desc`, {
         headers,
         next: { revalidate: 60 },
       }),
-      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_articles?select=*&status=eq.published&order=display_order.asc`, {
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_articles?select=*&status=eq.published&order=created_at.desc`, {
         headers,
         next: { revalidate: 60 },
       }),

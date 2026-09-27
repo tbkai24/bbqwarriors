@@ -151,8 +151,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         fetchSubmissionsFromSupabase(),
       ]);
 
+      setProfiles(dbProfs);
       if (dbProfs.length > 0) {
-        setProfiles(dbProfs);
         const currentSavedId = typeof window !== 'undefined' ? localStorage.getItem('sb19_active_profile_id') : null;
         const activeExist = dbProfs.find(p => p.id === (currentSavedId || activeProfile?.id));
         const target = activeExist || dbProfs[0];
@@ -160,9 +160,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (target && typeof window !== 'undefined') {
           localStorage.setItem('sb19_active_profile_id', target.id);
         }
+      } else {
+        setActiveProfile(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('sb19_active_profile_id');
+        }
       }
-      if (dbArts.length > 0) setArticles(dbArts);
-      if (dbSubs.length > 0) setSubmissions(dbSubs);
+      setArticles(dbArts);
+      setSubmissions(dbSubs);
     } catch {
       // Keep local
     }
