@@ -33,9 +33,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased selection:bg-orange-500/20 selection:text-orange-900 bg-slate-50 text-slate-900">
+      <body className="antialiased selection:bg-sky-500/20 selection:text-sky-900 bg-slate-50 text-slate-900">
         {children}
-        <PwaInstaller />
       </body>
     </html>
   );
