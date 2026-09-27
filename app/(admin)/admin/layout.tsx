@@ -48,6 +48,7 @@ import {
   Bell,
   Download,
   Heart,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface AdminWorkspaceContextType {
@@ -210,6 +211,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Support & Donation QR', href: '/admin/support', icon: Heart },
     { label: 'Official Social Links', href: '/admin/social', icon: Share2 },
     { label: 'SEO & Analytics', href: '/admin/analytics', icon: BarChart3 },
+    { label: 'DevOps & Auto-Healing', href: '/admin/devops', icon: ShieldCheck },
   ];
 
   return (

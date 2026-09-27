@@ -1,0 +1,33 @@
+name: BBQ Warriors DevOps Auto-Healing Monitor
+
+on:
+  schedule:
+    # Run health check & auto-healing monitor every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  health-check-and-heal:
+    name: Automated Health Audit & Self-Healing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Production Health Endpoint
+        id: health_check
+        run: |
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" https://bbqwarriors.vercel.app/api/health)
+          HTTP_BODY=$(echo "$RESPONSE" | sed -e 's/HTTP_STATUS:.*//g')
+          HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTP_STATUS://')
+
+          echo "Health Endpoint Status Code: $HTTP_STATUS"
+          echo "Health Endpoint Body: $HTTP_BODY"
+          echo "status_code=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "response_body=$HTTP_BODY" >> $GITHUB_OUTPUT
+
+      - name: Execute Auto-Healing (If Health Degraded or Anomalous)
+        if: always()
+        run: |
+          echo "Triggering DevOps 1-Click Auto-Healing Audit on Production..."
+          HEAL_RES=$(curl -s -X POST https://bbqwarriors.vercel.app/api/admin/auto-heal)
+          echo "Auto-Heal Audit Response:"
+          echo "$HEAL_RES"
