@@ -136,6 +136,7 @@ export function CreateProfileModal({ isOpen, onClose, onCreated }: CreateProfile
 
     const newProfile: Profile = {
       id: generateUUID(),
+      bbq_warrior_id: `bbq-warrior-${slug.trim().toLowerCase()}-${Date.now()}`,
       title: title.trim(),
       slug: slug.trim().toLowerCase(),
       description: description.trim() || null,
@@ -152,12 +153,12 @@ export function CreateProfileModal({ isOpen, onClose, onCreated }: CreateProfile
       x_url: getUrl('x'),
       threads_url: getUrl('threads'),
       custom_social_links: customLinks.length > 0 ? customLinks : null,
-      seo_title: `${title} - SB19 YouTube Streamers`,
+      seo_title: `${title} - BBQ Warriors`,
       seo_description: description.trim() || null,
       status: 'published',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    };
+    } as any;
 
     const existing = getStoredProfiles();
 

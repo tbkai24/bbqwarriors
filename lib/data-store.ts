@@ -83,13 +83,19 @@ function sanitizeForBbqWarriorsProfiles(profile: Partial<Profile>) {
     'id', 'bbq_warrior_id', 'josh_cullen_artist_id', 'title', 'slug', 'description',
     'official_spotify_playlist_url', 'official_spotify_track_url', 'embedded_youtube_mv_url',
     'official_youtube_channel_url', 'bbq_warrior_badge', 'accent_color', 'theme',
-    'cover_image', 'profile_image', 'status', 'created_at', 'updated_at'
+    'cover_image', 'profile_image', 'status', 'custom_social_links', 'display_order',
+    'support_qr_options', 'youtube_url', 'facebook_url', 'instagram_url', 'x_url',
+    'threads_url', 'website_url', 'featured_video_url', 'support_qr_image',
+    'support_title', 'support_note', 'profile_type', 'created_at', 'updated_at'
   ];
   const clean: Record<string, any> = {};
   for (const k of Object.keys(profile)) {
     if (allowed.includes(k)) {
       clean[k] = (profile as any)[k];
     }
+  }
+  if (!clean.bbq_warrior_id) {
+    clean.bbq_warrior_id = `bbq-warrior-${profile.slug || Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
   }
   return clean;
 }
@@ -133,7 +139,13 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
 
     let { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
-    if (!error && data && data.length > 0) {
+    if (!error && data) {
+      if (data.length === 0) {
+        saveProfiles([]);
+        cachedProfiles = { data: [], timestamp: now };
+        return [];
+      }
+
       const localProfiles = getStoredProfiles();
       const merged = (data as Profile[]).map((sp, idx) => {
         const lp = localProfiles.find(p => p.id === sp.id);
@@ -162,14 +174,22 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
 
 export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<{ success: boolean; error?: string; data?: Profile }> {
   clearDataStoreCache();
+
+  // Ensure unique bbq_warrior_id to prevent Supabase database constraint conflict
+  const bbqWarriorId = (profile as any).bbq_warrior_id || `bbq-warrior-${profile.slug || Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const profilePayload = {
+    ...profile,
+    bbq_warrior_id: bbqWarriorId,
+  };
+
   // Always update local storage first so local changes persist seamlessly
   if (profile.id) {
     const current = getStoredProfiles();
     const idx = current.findIndex(p => p.id === profile.id);
     if (idx >= 0) {
-      current[idx] = { ...current[idx], ...profile } as Profile;
+      current[idx] = { ...current[idx], ...profilePayload } as Profile;
     } else {
-      current.unshift(profile as Profile);
+      current.unshift(profilePayload as Profile);
     }
     saveProfiles(current);
   }
@@ -180,7 +200,7 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
     // 1. Try upserting full profile payload to bbq_warriors_profiles
     const fullRes = await supabase
       .from('bbq_warriors_profiles')
-      .upsert(profile)
+      .upsert(profilePayload)
       .select()
       .maybeSingle();
 
@@ -197,8 +217,8 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
       return { success: true, data: resultData };
     }
 
-    // 2. If full upsert fails (e.g. schema cache column error before migration SQL is run), upsert sanitized fields
-    const bbqClean = sanitizeForBbqWarriorsProfiles(profile);
+    // 2. If full upsert fails, upsert sanitized fields
+    const bbqClean = sanitizeForBbqWarriorsProfiles(profilePayload);
     const bbqRes = await supabase
       .from('bbq_warriors_profiles')
       .upsert(bbqClean)
@@ -207,7 +227,7 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
 
     if (!bbqRes.error && bbqRes.data) {
       const resultData = {
-        ...profile,
+        ...profilePayload,
         ...(bbqRes.data as any),
         custom_social_links: profile.custom_social_links ?? null,
       } as Profile;
@@ -219,10 +239,10 @@ export async function saveProfileToSupabase(profile: Partial<Profile>): Promise<
       return { success: true, data: resultData };
     }
 
-    return { success: true, data: profile as Profile };
+    return { success: true, data: profilePayload as Profile };
   } catch (err: any) {
     console.warn('Supabase saveProfile notice:', err?.message || err);
-    return { success: true, data: profile as Profile };
+    return { success: true, data: profilePayload as Profile };
   }
 }
 

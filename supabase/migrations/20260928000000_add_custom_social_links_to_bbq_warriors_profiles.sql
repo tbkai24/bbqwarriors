@@ -3,7 +3,11 @@
 -- (Run this SQL script in your Supabase SQL Editor to update schema cache)
 -- =========================================================================
 
--- 1. Add missing extended columns to bbq_warriors_profiles
+-- 1. Remove rigid default constraint on bbq_warrior_id to allow dynamic profile creation
+ALTER TABLE public.bbq_warriors_profiles ALTER COLUMN bbq_warrior_id DROP DEFAULT;
+ALTER TABLE public.bbq_warriors_profiles DROP CONSTRAINT IF EXISTS bbq_warriors_profiles_bbq_warrior_id_key;
+
+-- 2. Add missing extended columns to bbq_warriors_profiles
 ALTER TABLE public.bbq_warriors_profiles 
 ADD COLUMN IF NOT EXISTS custom_social_links JSONB DEFAULT '[]'::jsonb,
 ADD COLUMN IF NOT EXISTS display_order INT DEFAULT 0,
@@ -20,7 +24,7 @@ ADD COLUMN IF NOT EXISTS support_title TEXT,
 ADD COLUMN IF NOT EXISTS support_note TEXT,
 ADD COLUMN IF NOT EXISTS profile_type TEXT DEFAULT 'embed';
 
--- 2. Create isolated bbq_warriors_submissions table
+-- 3. Create isolated bbq_warriors_submissions table
 CREATE TABLE IF NOT EXISTS public.bbq_warriors_submissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID REFERENCES public.bbq_warriors_profiles(id) ON DELETE CASCADE,
@@ -40,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.bbq_warriors_submissions (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. Enable ALL (SELECT, INSERT, UPDATE, DELETE) RLS policies for client operations
+-- 4. Enable ALL (SELECT, INSERT, UPDATE, DELETE) RLS policies for client operations
 DROP POLICY IF EXISTS "Public can view published BBQ Warriors profiles" ON public.bbq_warriors_profiles;
 DROP POLICY IF EXISTS "Public can view published BBQ Warriors articles" ON public.bbq_warriors_articles;
 DROP POLICY IF EXISTS "Public can log BBQ analytics" ON public.bbq_warriors_analytics;
@@ -60,8 +64,8 @@ CREATE POLICY "Enable all for bbq_warriors_articles" ON public.bbq_warriors_arti
 CREATE POLICY "Enable all for bbq_warriors_analytics" ON public.bbq_warriors_analytics FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all for bbq_warriors_submissions" ON public.bbq_warriors_submissions FOR ALL USING (true) WITH CHECK (true);
 
--- 4. Delete seed profile from table
+-- 5. Delete seed profile from table if present
 DELETE FROM public.bbq_warriors_profiles WHERE slug = 'josh-cullen' OR title = 'BBQ Warriors';
 
--- 5. Reload PostgREST schema cache
+-- 6. Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
