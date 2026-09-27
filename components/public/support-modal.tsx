@@ -7,7 +7,7 @@ import { Heart, X, Copy, Check, QrCode, Sparkles, CreditCard, Wallet } from 'luc
 
 // Props for SupportModal component
 interface SupportModalProps {
-  profile: Profile;
+  profile?: Profile;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -19,10 +19,10 @@ export function SupportModal({ profile, isOpen, onClose }: SupportModalProps) {
 
   // Normalize options array or fallback to legacy single QR code
   const options: SupportQrOption[] = React.useMemo(() => {
-    if (profile.support_qr_options && profile.support_qr_options.length > 0) {
+    if (profile?.support_qr_options && profile.support_qr_options.length > 0) {
       return profile.support_qr_options;
     }
-    if (profile.support_qr_image) {
+    if (profile?.support_qr_image) {
       return [{
         id: 'legacy-1',
         platform: 'GCash / E-Wallet',
@@ -44,8 +44,8 @@ export function SupportModal({ profile, isOpen, onClose }: SupportModalProps) {
   const currentOpt = options.find(o => o.id === selectedOptId) || options[0] || null;
 
   const qrImageUrl = currentOpt?.qr_image ? getCloudinaryImageUrl(currentOpt.qr_image, { width: 800 }) : null;
-  const title = profile.support_title || 'Support Project & Hosting Maintenance';
-  const note = profile.support_note || 'Optional support to help maintain server and hosting costs for the SB19 YouTube Streamers Hub!';
+  const title = profile?.support_title || 'Support BBQ Warriors & Hosting Maintenance';
+  const note = profile?.support_note || 'Optional support to help maintain server and hosting costs for BBQ Warriors!';
 
   // Handles copying account number or wallet link to clipboard
   const handleCopyText = (text: string) => {
