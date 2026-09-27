@@ -70,7 +70,7 @@ export function saveProfiles(profiles: Profile[]) {
 // In-memory cache to prevent redundant DB calls during fast UI navigation
 let cachedProfiles: { data: Profile[]; timestamp: number } | null = null;
 let cachedArticles: { data: Article[]; timestamp: number } | null = null;
-const CACHE_TTL_MS = 5000; // 5 seconds TTL
+const CACHE_TTL_MS = 15000; // 15 seconds TTL for egress & performance optimization
 
 /** Invalidates short-lived memory cache to force fresh DB fetch on mutations */
 export function clearDataStoreCache() {
@@ -86,10 +86,10 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
     return cachedProfiles.data;
   }
 
-  // Try API route first with no-store
+  // Try Edge-cached API route first for public visitors (skip if forceFresh)
   if (typeof window !== 'undefined') {
     try {
-      const edgeRes = await fetch('/api/public/data', { cache: 'no-store' });
+      const edgeRes = await fetch('/api/public/data');
       if (edgeRes.ok) {
         const edgeJson = await edgeRes.json();
         if (edgeJson.profiles && Array.isArray(edgeJson.profiles)) {

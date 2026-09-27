@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Edge Caching Config (Optimizes Supabase DB Egress & Latency)
+export const revalidate = 60; // Revalidate at Edge CDN every 60 seconds
 
 export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cnvxdxltwpwmnrfqvpqq.supabase.co';
@@ -13,15 +13,15 @@ export async function GET() {
   };
 
   try {
-    // Query strictly the BBQ Warriors isolated tables (NO cache, NO fallback to legacy profiles/articles)
+    // Query strictly BBQ Warriors isolated tables with Edge CDN Revalidation (60s SWR)
     const [profilesRes, articlesRes] = await Promise.all([
       fetch(`${supabaseUrl}/rest/v1/bbq_warriors_profiles?select=*&status=eq.published&order=display_order.asc`, {
         headers,
-        cache: 'no-store',
+        next: { revalidate: 60 },
       }),
       fetch(`${supabaseUrl}/rest/v1/bbq_warriors_articles?select=*&status=eq.published&order=display_order.asc`, {
         headers,
-        cache: 'no-store',
+        next: { revalidate: 60 },
       }),
     ]);
 
@@ -33,7 +33,7 @@ export async function GET() {
       {
         status: 200,
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
         },
       }
     );
