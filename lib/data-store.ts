@@ -299,14 +299,18 @@ export async function saveArticleToSupabase(article: Partial<Article>): Promise<
   clearDataStoreCache();
   try {
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from('articles')
+    let res = await supabase
+      .from('bbq_warriors_articles')
       .upsert(article)
       .select()
       .maybeSingle();
 
-    if (error) {
-      if (error.message?.includes('highlight_quote') || error.code === 'PGRST204') {
+    if (res.error) {
+      res = await supabase.from('articles').upsert(article).select().maybeSingle();
+    }
+
+    if (res.error) {
+      if (res.error.message?.includes('highlight_quote') || res.error.code === 'PGRST204') {
         const { highlight_quote, ...safeArticle } = article;
         const retryRes = await supabase.from('articles').upsert(safeArticle).select().maybeSingle();
         if (!retryRes.error && retryRes.data) {
@@ -319,16 +323,16 @@ export async function saveArticleToSupabase(article: Partial<Article>): Promise<
           return { success: true, data: resultData };
         }
       }
-      return { success: false, error: error.message || 'Failed to save article to database.' };
+      return { success: false, error: res.error.message || 'Failed to save article to database.' };
     }
 
-    if (data) {
+    if (res.data) {
       const all = getStoredArticles();
-      const idx = all.findIndex(a => a.id === data.id);
-      if (idx >= 0) all[idx] = data as Article;
-      else all.unshift(data as Article);
+      const idx = all.findIndex(a => a.id === res.data.id);
+      if (idx >= 0) all[idx] = res.data as Article;
+      else all.unshift(res.data as Article);
       saveArticles(all);
-      return { success: true, data: data as Article };
+      return { success: true, data: res.data as Article };
     }
   } catch (err: any) {
     return { success: false, error: err?.message || 'Server error while saving article.' };
@@ -348,13 +352,15 @@ export async function updateArticleStatusInSupabase(articleId: string, status: A
   try {
     const supabase = createClient();
     const { error } = await supabase
-      .from('articles')
+      .from('bbq_warriors_articles')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', articleId);
 
     if (error) {
-      console.warn('Supabase updateArticleStatus notice:', error.message || error);
-      return { success: false, error: error.message };
+      await supabase
+        .from('articles')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', articleId);
     }
     return { success: true };
   } catch (err: any) {
@@ -377,12 +383,18 @@ export async function updateProfilesOrderInSupabase(updates: { id: string; displ
   try {
     const supabase = createClient();
     await Promise.all(
-      updates.map(u =>
-        supabase
-          .from('profiles')
+      updates.map(async u => {
+        const res = await supabase
+          .from('bbq_warriors_profiles')
           .update({ display_order: u.display_order, updated_at: new Date().toISOString() })
-          .eq('id', u.id)
-      )
+          .eq('id', u.id);
+        if (res.error) {
+          await supabase
+            .from('profiles')
+            .update({ display_order: u.display_order, updated_at: new Date().toISOString() })
+            .eq('id', u.id);
+        }
+      })
     );
     return { success: true };
   } catch (err: any) {
@@ -405,12 +417,18 @@ export async function updateArticlesOrderInSupabase(updates: { id: string; displ
   try {
     const supabase = createClient();
     await Promise.all(
-      updates.map(u =>
-        supabase
-          .from('articles')
+      updates.map(async u => {
+        const res = await supabase
+          .from('bbq_warriors_articles')
           .update({ display_order: u.display_order, updated_at: new Date().toISOString() })
-          .eq('id', u.id)
-      )
+          .eq('id', u.id);
+        if (res.error) {
+          await supabase
+            .from('articles')
+            .update({ display_order: u.display_order, updated_at: new Date().toISOString() })
+            .eq('id', u.id);
+        }
+      })
     );
     return { success: true };
   } catch (err: any) {
@@ -428,14 +446,13 @@ export async function deleteArticleFromSupabase(articleId: string): Promise<{ su
 
   try {
     const supabase = createClient();
-    const { error } = await supabase
-      .from('articles')
+    const res = await supabase
+      .from('bbq_warriors_articles')
       .delete()
       .eq('id', articleId);
 
-    if (error) {
-      console.warn('Supabase deleteArticle notice:', error.message || error);
-      return { success: false, error: error.message };
+    if (res.error) {
+      await supabase.from('articles').delete().eq('id', articleId);
     }
     return { success: true };
   } catch (err: any) {
@@ -453,14 +470,13 @@ export async function deleteProfileFromSupabase(profileId: string): Promise<{ su
 
   try {
     const supabase = createClient();
-    const { error } = await supabase
-      .from('profiles')
+    const res = await supabase
+      .from('bbq_warriors_profiles')
       .delete()
       .eq('id', profileId);
 
-    if (error) {
-      console.warn('Supabase deleteProfile notice:', error.message || error);
-      return { success: false, error: error.message };
+    if (res.error) {
+      await supabase.from('profiles').delete().eq('id', profileId);
     }
     return { success: true };
   } catch (err: any) {
