@@ -19,11 +19,12 @@ interface SubmitModalProps {
 
 // Social platform preset options
 const SOCIAL_PLATFORMS = [
+  { value: 'spotify', label: 'Spotify (Playlist / Track)' },
+  { value: 'youtube', label: 'YouTube & YT Music (Playlist / Video)' },
   { value: 'tiktok', label: 'TikTok' },
   { value: 'facebook', label: 'Facebook' },
   { value: 'x', label: 'X (Twitter)' },
   { value: 'instagram', label: 'Instagram' },
-  { value: 'youtube', label: 'YouTube' },
   { value: 'threads', label: 'Threads' },
   { value: 'other', label: 'Other Social Platform' },
 ] as const;
@@ -35,7 +36,7 @@ export function SubmitModal({ profile, isOpen, onClose, onSuccess }: SubmitModal
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
-  const [selectedPlatform, setSelectedPlatform] = useState<string>('tiktok');
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('spotify');
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [metadata, setMetadata] = useState<ExtractedMetadata | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -53,11 +54,12 @@ export function SubmitModal({ profile, isOpen, onClose, onSuccess }: SubmitModal
 
   const autoDetectPlatform = (inputUrl: string) => {
     const lower = inputUrl.toLowerCase();
-    if (lower.includes('tiktok.com')) setSelectedPlatform('tiktok');
+    if (lower.includes('spotify.com') || lower.includes('open.spotify.com')) setSelectedPlatform('spotify');
+    else if (lower.includes('youtube.com') || lower.includes('music.youtube.com') || lower.includes('youtu.be')) setSelectedPlatform('youtube');
+    else if (lower.includes('tiktok.com')) setSelectedPlatform('tiktok');
     else if (lower.includes('facebook.com') || lower.includes('fb.com') || lower.includes('fb.watch')) setSelectedPlatform('facebook');
     else if (lower.includes('twitter.com') || lower.includes('x.com')) setSelectedPlatform('x');
     else if (lower.includes('instagram.com')) setSelectedPlatform('instagram');
-    else if (lower.includes('youtube.com') || lower.includes('youtu.be')) setSelectedPlatform('youtube');
     else if (lower.includes('threads.net')) setSelectedPlatform('threads');
   };
 

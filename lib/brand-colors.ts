@@ -10,9 +10,11 @@ const BRAND_PRESETS: Record<string, BrandBadgeStyle> = {
   // Genius (Iconic Yellow & Black)
   genius: { bg: '#ffff00', text: '#000000', border: '#e6e600' },
   
-  // YouTube (Iconic Red & White)
+  // YouTube & YouTube Music (Iconic Red & White)
   youtube: { bg: '#ff0000', text: '#ffffff', border: '#cc0000' },
   yt: { bg: '#ff0000', text: '#ffffff', border: '#cc0000' },
+  'youtube music': { bg: '#ff0000', text: '#ffffff', border: '#cc0000' },
+  'yt music': { bg: '#ff0000', text: '#ffffff', border: '#cc0000' },
   
   // Spotify (Iconic Green & White)
   spotify: { bg: '#1db954', text: '#ffffff', border: '#179843' },

@@ -258,7 +258,7 @@ export function CreateProfileModal({ isOpen, onClose, onCreated }: CreateProfile
                   </span>
                   {profileType === 'engagement' && <span className="w-2.5 h-2.5 rounded-full bg-purple-600 shadow-xs" />}
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">TikTok 🎵, FB 📘, X 🐦, IG 📸 boost links compiled by platform.</p>
+                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Spotify 🎧, YT & YT Music 🔴, TikTok 🎵, FB 📘, X 🐦, IG 📸 boost links compiled by platform.</p>
               </button>
             </div>
           </div>

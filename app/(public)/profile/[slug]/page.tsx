@@ -351,11 +351,12 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
             (() => {
               // Group engagement articles cleanly by platform
               const groups: Record<string, { label: string; icon: string; articles: Article[] }> = {
+                spotify: { label: 'Spotify Playlists & Tracks', icon: '🎧', articles: [] },
                 tiktok: { label: 'TikTok Campaigns', icon: '🎵', articles: [] },
                 facebook: { label: 'Facebook Engagement Links', icon: '📘', articles: [] },
                 x: { label: 'X (Twitter) Boost Links', icon: '🐦', articles: [] },
                 instagram: { label: 'Instagram Posts', icon: '📸', articles: [] },
-                youtube: { label: 'YouTube Community & Shorts', icon: '🔴', articles: [] },
+                youtube: { label: 'YouTube & YT Music Playlists', icon: '🔴', articles: [] },
                 threads: { label: 'Threads Posts', icon: '🧵', articles: [] },
                 other: { label: 'Other Social Campaigns', icon: '🚀', articles: [] },
               };
@@ -363,11 +364,12 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
               articles.forEach(art => {
                 const site = (art.website_name || '').toLowerCase();
                 const url = (art.article_url || '').toLowerCase();
-                if (site.includes('tiktok') || url.includes('tiktok.com')) groups.tiktok.articles.push(art);
+                if (site.includes('spotify') || url.includes('spotify.com') || url.includes('open.spotify.com')) groups.spotify.articles.push(art);
+                else if (site.includes('tiktok') || url.includes('tiktok.com')) groups.tiktok.articles.push(art);
                 else if (site.includes('facebook') || site.includes('fb') || url.includes('facebook.com')) groups.facebook.articles.push(art);
                 else if (site.includes('x') || site.includes('twitter') || url.includes('twitter.com') || url.includes('x.com')) groups.x.articles.push(art);
                 else if (site.includes('instagram') || site.includes('ig') || url.includes('instagram.com')) groups.instagram.articles.push(art);
-                else if (site.includes('youtube') || site.includes('yt') || url.includes('youtube.com') || url.includes('youtu.be')) groups.youtube.articles.push(art);
+                else if (site.includes('youtube') || site.includes('yt') || url.includes('youtube.com') || url.includes('music.youtube.com') || url.includes('youtu.be')) groups.youtube.articles.push(art);
                 else if (site.includes('threads') || url.includes('threads.net')) groups.threads.articles.push(art);
                 else groups.other.articles.push(art);
               });
