@@ -143,10 +143,10 @@ export default function ArticlesAdminPage() {
   };
 
   const profileArticles = articles
-    .filter(a => a.profile_id === activeProfile.id)
+    .filter(a => a.profile_id === activeProfile.id || a.profile_id === (activeProfile as any).bbq_warrior_id || a.profile_id === activeProfile.slug)
     .sort((a, b) => a.display_order - b.display_order);
 
-  const activeArticles = profileArticles.filter(a => a.status === 'published');
+  const activeArticles = profileArticles.filter(a => !a.status || a.status === 'published');
   const archivedArticles = profileArticles.filter(a => a.status === 'archived');
   const currentTabArticles = viewTab === 'active' ? activeArticles : archivedArticles;
 

@@ -144,7 +144,7 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
         recordProfileView(localMatch.id);
       }
       const localArticles = getStoredArticles()
-        .filter(a => a.profile_id === localMatch.id && a.status === 'published')
+        .filter(a => (a.profile_id === localMatch.id || a.profile_id === (localMatch as any).bbq_warrior_id || a.profile_id === localMatch.slug) && (!a.status || a.status === 'published'))
         .sort((a, b) => a.display_order !== b.display_order ? a.display_order - b.display_order : compareByFrontNumber(a.title, b.title, 'asc'));
       setArticles(localArticles);
     }
@@ -168,7 +168,7 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
         }
         const fetchedArticles = await fetchArticlesFromSupabase();
         const profileArts = fetchedArticles
-          .filter(a => a.profile_id === supabaseMatch.id && a.status === 'published')
+          .filter(a => (a.profile_id === supabaseMatch.id || a.profile_id === (supabaseMatch as any).bbq_warrior_id || a.profile_id === supabaseMatch.slug) && (!a.status || a.status === 'published'))
           .sort((a, b) => a.display_order !== b.display_order ? a.display_order - b.display_order : compareByFrontNumber(a.title, b.title, 'asc'));
         setArticles(profileArts);
       }
