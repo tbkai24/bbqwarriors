@@ -268,16 +268,22 @@ export function saveArticles(articles: Article[]) {
 
 function sanitizeForBbqWarriorsArticles(article: Partial<Article>) {
   const allowed = [
-    'id', 'profile_id', 'article_url', 'canonical_url', 'website_name', 'title',
+    'id', 'bbq_profile_id', 'article_url', 'canonical_url', 'website_name', 'title',
+    'stream_type', 'embedded_youtube_mv_id', 'embedded_spotify_id',
     'thumbnail', 'description', 'highlight_quote', 'display_order', 'status',
     'clicks_count', 'device_breakdown', 'country_breakdown', 'created_at', 'updated_at'
   ];
+  const profileId = article.profile_id || (article as any).bbq_profile_id;
   const clean: Record<string, any> = {};
   for (const k of Object.keys(article)) {
     if (allowed.includes(k) && (article as any)[k] !== undefined) {
       clean[k] = (article as any)[k];
     }
   }
+  if (profileId) {
+    clean.bbq_profile_id = profileId;
+  }
+  delete clean.profile_id;
   return clean;
 }
 
@@ -299,7 +305,15 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
           const localArticles = getStoredArticles();
           const map = new Map<string, Article>();
           localArticles.forEach(a => map.set(a.id, a));
-          edgeJson.articles.forEach((a: Article) => map.set(a.id, { ...a, status: a.status || 'published' }));
+          edgeJson.articles.forEach((a: any) => {
+            const pid = a.profile_id || a.bbq_profile_id;
+            map.set(a.id, { 
+              ...a, 
+              profile_id: pid,
+              bbq_profile_id: pid,
+              status: a.status || 'published' 
+            });
+          });
 
           const merged = Array.from(map.values()).sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
           saveArticles(merged);
@@ -329,7 +343,15 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
       const localArticles = getStoredArticles();
       const map = new Map<string, Article>();
       localArticles.forEach(a => map.set(a.id, a));
-      (data as Article[]).forEach(a => map.set(a.id, { ...a, status: a.status || 'published' }));
+      (data as any[]).forEach(a => {
+        const pid = a.profile_id || a.bbq_profile_id;
+        map.set(a.id, { 
+          ...a, 
+          profile_id: pid,
+          bbq_profile_id: pid,
+          status: a.status || 'published' 
+        });
+      });
 
       const merged = Array.from(map.values()).sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
       saveArticles(merged);
@@ -345,57 +367,56 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
 export async function saveArticleToSupabase(article: Partial<Article>): Promise<{ success: boolean; error?: string; data?: Article }> {
   clearDataStoreCache();
 
+  const profileId = article.profile_id || (article as any).bbq_profile_id;
+  const formattedArticle = {
+    ...article,
+    profile_id: profileId,
+    bbq_profile_id: profileId,
+  } as Article;
+
   // 1. Update local storage immediately so local additions persist instantly
-  if (article.id) {
+  if (formattedArticle.id) {
     const current = getStoredArticles();
-    const idx = current.findIndex(a => a.id === article.id);
+    const idx = current.findIndex(a => a.id === formattedArticle.id);
     if (idx >= 0) {
-      current[idx] = { ...current[idx], ...article } as Article;
+      current[idx] = { ...current[idx], ...formattedArticle };
     } else {
-      current.unshift(article as Article);
+      current.unshift(formattedArticle);
     }
     saveArticles(current);
   }
 
   try {
     const supabase = createClient();
+    const sanitized = sanitizeForBbqWarriorsArticles(formattedArticle);
+
     const res = await supabase
-      .from('bbq_warriors_articles')
-      .upsert(article)
-      .select()
-      .maybeSingle();
-
-    if (!res.error && res.data) {
-      const resultData = { ...article, ...res.data } as Article;
-      const all = getStoredArticles();
-      const idx = all.findIndex(a => a.id === resultData.id);
-      if (idx >= 0) all[idx] = resultData;
-      else all.unshift(resultData);
-      saveArticles(all);
-      return { success: true, data: resultData };
-    }
-
-    // 2. Retry with sanitized payload if full upsert fails
-    const sanitized = sanitizeForBbqWarriorsArticles(article);
-    const retryRes = await supabase
       .from('bbq_warriors_articles')
       .upsert(sanitized)
       .select()
       .maybeSingle();
 
-    if (!retryRes.error && retryRes.data) {
-      const resultData = { ...article, ...retryRes.data } as Article;
+    if (!res.error && res.data) {
+      const returnedPid = res.data.profile_id || res.data.bbq_profile_id || profileId;
+      const resultData = {
+        ...formattedArticle,
+        ...res.data,
+        profile_id: returnedPid,
+        bbq_profile_id: returnedPid,
+      } as Article;
       const all = getStoredArticles();
       const idx = all.findIndex(a => a.id === resultData.id);
       if (idx >= 0) all[idx] = resultData;
       else all.unshift(resultData);
       saveArticles(all);
       return { success: true, data: resultData };
+    } else if (res.error) {
+      console.warn('Supabase saveArticle error:', res.error);
     }
   } catch (err: any) {
     console.warn('Supabase saveArticle notice:', err?.message || err);
   }
-  return { success: true, data: article as Article };
+  return { success: true, data: formattedArticle };
 }
 
 export async function updateArticleStatusInSupabase(articleId: string, status: ArticleStatus): Promise<{ success: boolean; error?: string }> {
@@ -568,7 +589,8 @@ export async function approveSubmissionInSupabase(sub: ArticleSubmission, newArt
   clearDataStoreCache();
   try {
     const supabase = createClient();
-    await supabase.from('bbq_warriors_articles').upsert(newArt);
+    const sanitizedArt = sanitizeForBbqWarriorsArticles(newArt);
+    await supabase.from('bbq_warriors_articles').upsert(sanitizedArt);
     await supabase.from('bbq_warriors_submissions').update({
       status: 'approved',
       reviewed_at: new Date().toISOString()

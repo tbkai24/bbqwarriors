@@ -30,10 +30,17 @@ export async function GET() {
     ]);
 
     const profiles = profilesRes.ok ? await profilesRes.json() : [];
-    const articles = articlesRes.ok ? await articlesRes.json() : [];
+    const rawArticles = articlesRes.ok ? await articlesRes.json() : [];
+    const articles = Array.isArray(rawArticles)
+      ? rawArticles.map((a: any) => ({
+          ...a,
+          profile_id: a.profile_id || a.bbq_profile_id,
+          bbq_profile_id: a.bbq_profile_id || a.profile_id,
+        }))
+      : [];
 
     return NextResponse.json(
-      { profiles: Array.isArray(profiles) ? profiles : [], articles: Array.isArray(articles) ? articles : [], timestamp: new Date().toISOString() },
+      { profiles: Array.isArray(profiles) ? profiles : [], articles, timestamp: new Date().toISOString() },
       {
         status: 200,
         headers: {
