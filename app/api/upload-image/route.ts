@@ -3,14 +3,14 @@ import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'bbqwarriors_preset';
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || process.env.CLOUDINARY_UPLOAD_PRESET || 'bbqwarriors_preset';
 
     if (!cloudName) {
       return NextResponse.json(
-        { error: 'Cloudinary cloud name missing in environment variables (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME)' },
+        { error: 'Cloudinary cloud name missing in environment variables (Please add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or CLOUDINARY_CLOUD_NAME in Vercel Environment Variables)' },
         { status: 400 }
       );
     }

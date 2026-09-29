@@ -20,7 +20,7 @@ export function getCloudinaryImageUrl(publicIdOrUrl: string, options?: { width?:
   }
 
   // 3. Fallback: Construct full Cloudinary URL from publicId if provided
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME || '';
   if (!cloudName) return publicIdOrUrl;
   return `https://res.cloudinary.com/${cloudName}/image/upload/${transforms}/${publicIdOrUrl}`;
 }
