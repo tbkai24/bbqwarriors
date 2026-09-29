@@ -45,9 +45,11 @@ export async function POST(req: NextRequest) {
       uploadFormData.append('timestamp', timestamp);
       uploadFormData.append('folder', folder);
       uploadFormData.append('signature', signature);
-    } else {
+    } else if (uploadPreset) {
       uploadFormData.append('upload_preset', uploadPreset);
       uploadFormData.append('folder', folder);
+    } else {
+      return NextResponse.json({ error: 'Cloud image storage service credentials or upload preset missing.' }, { status: 400 });
     }
 
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
