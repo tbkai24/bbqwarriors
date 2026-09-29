@@ -8,6 +8,13 @@ export async function POST(req: NextRequest) {
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'bbqwarriors_preset';
 
+    if (!cloudName) {
+      return NextResponse.json(
+        { error: 'Cloudinary cloud name missing in environment variables (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME)' },
+        { status: 400 }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     const folder = (formData.get('folder') as string) || 'BBQWarriors/uploads';
@@ -16,10 +23,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No image file provided' }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const mimeType = file.type || 'image/jpeg';
-    const base64Data = `data:${mimeType};base64,${buffer.toString('base64')}`;
+    let base64Data: string;
+    if (typeof file === 'string') {
+      base64Data = file;
+    } else {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const mimeType = file.type || 'image/jpeg';
+      base64Data = `data:${mimeType};base64,${buffer.toString('base64')}`;
+    }
 
     const uploadFormData = new FormData();
     uploadFormData.append('file', base64Data);
