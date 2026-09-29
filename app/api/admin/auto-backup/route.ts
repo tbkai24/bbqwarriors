@@ -17,8 +17,15 @@ async function handleBackup(req: NextRequest) {
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'wkmmjpzb';
-    const apiKey = process.env.CLOUDINARY_API_KEY || '498322474662986';
-    const apiSecret = process.env.CLOUDINARY_API_SECRET || 'YXKfV-YIkUep-i6mxrQEd3qoqeM';
+    const apiKey = process.env.CLOUDINARY_API_KEY || '';
+    const apiSecret = process.env.CLOUDINARY_API_SECRET || '';
+
+    if (!apiKey || !apiSecret) {
+      return NextResponse.json(
+        { success: false, error: 'Cloudinary API credentials missing in environment variables (CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET)' },
+        { status: 400 }
+      );
+    }
 
     const headers = {
       apikey: supabaseKey,
