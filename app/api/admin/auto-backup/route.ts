@@ -22,7 +22,7 @@ async function handleBackup(req: NextRequest) {
 
     if (!apiKey || !apiSecret) {
       return NextResponse.json(
-        { success: false, error: 'Cloudinary API credentials missing in environment variables (CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET)' },
+        { success: false, error: 'Backup storage service is not fully configured.' },
         { status: 400 }
       );
     }

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     if (!cloudName) {
       return NextResponse.json(
-        { error: 'Cloudinary cloud name missing in environment variables (Please add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or CLOUDINARY_CLOUD_NAME in Vercel Environment Variables)' },
+        { error: 'Image upload service is not configured properly.' },
         { status: 400 }
       );
     }
