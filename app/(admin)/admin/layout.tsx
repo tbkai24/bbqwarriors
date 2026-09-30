@@ -207,9 +207,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Articles', href: '/admin/articles', icon: FileText, badge: articleCount },
     { label: 'Submissions', href: '/admin/submissions', icon: Clock, badge: pendingCount, highlight: pendingCount > 0 },
     { label: 'Push Notifications', href: '/admin/notifications', icon: Bell },
-    { label: 'Appearance', href: '/admin/appearance', icon: Palette },
-    { label: 'Support & Donation QR', href: '/admin/support', icon: Heart },
-    { label: 'Official Social Links', href: '/admin/social', icon: Share2 },
+    { label: 'Appearance & Socials', href: '/admin/appearance', icon: Palette },
     { label: 'SEO & Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'DevOps & Auto-Healing', href: '/admin/devops', icon: ShieldCheck },
   ];
