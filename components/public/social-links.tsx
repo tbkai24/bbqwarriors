@@ -84,18 +84,10 @@ const formatDirectUrl = (url: string) => {
 
 // Main SocialLinks component - renders row of profile social media icons
 export function SocialLinks({ profile }: SocialLinksProps) {
-  const getCleanYoutubeUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.includes('watch?v=') || url.includes('youtu.be/')) {
-      return 'https://www.youtube.com/@sb19official';
-    }
-    return url;
-  };
-
   // Standard profile social links list
   const standardLinks = [
     { key: 'website_url', label: 'Website', url: profile.website_url, icon: Globe },
-    { key: 'youtube_url', label: 'YouTube', url: getCleanYoutubeUrl(profile.youtube_url), icon: YoutubeIcon },
+    { key: 'youtube_url', label: 'YouTube', url: profile.youtube_url, icon: YoutubeIcon },
     { key: 'facebook_url', label: 'Facebook', url: profile.facebook_url, icon: FacebookIcon },
     { key: 'instagram_url', label: 'Instagram', url: profile.instagram_url, icon: InstagramIcon },
     { key: 'x_url', label: 'X', url: profile.x_url, icon: XTwitterIcon },

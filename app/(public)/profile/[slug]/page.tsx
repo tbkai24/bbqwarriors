@@ -272,9 +272,9 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
             className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-slate-50 shadow-xl bg-slate-100 mb-3 shrink-0"
             style={{ boxShadow: `0 8px 25px ${(profile.accent_color || '#e11d48')}33` }}
           >
-            {profile.profile_image || profile.cover_image ? (
+            {profile.profile_image ? (
               <img
-                src={getCloudinaryImageUrl(profile.profile_image || profile.cover_image || '', { width: 300 })}
+                src={getCloudinaryImageUrl(profile.profile_image, { width: 300 })}
                 alt={profile.title}
                 className="w-full h-full object-cover"
               />

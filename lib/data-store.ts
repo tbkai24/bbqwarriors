@@ -159,7 +159,7 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
           status: computedStatus,
           featured_video_url: validVideoUrl,
           embedded_youtube_mv_url: validVideoUrl,
-          youtube_url: validVideoUrl || (sp as any).official_youtube_channel_url || 'https://www.youtube.com/@JoshCullenOfficial',
+          youtube_url: sp.youtube_url || (sp as any).official_youtube_channel_url || validVideoUrl || null,
           display_order: sp.display_order ?? lp?.display_order ?? idx + 1,
           custom_social_links: sp.custom_social_links ?? lp?.custom_social_links ?? null,
         };
