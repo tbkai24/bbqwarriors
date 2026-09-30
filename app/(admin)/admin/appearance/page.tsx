@@ -5,13 +5,27 @@ import { useAdminWorkspace } from '../layout';
 import { getStoredProfiles, saveProfiles, saveProfileToSupabase } from '@/lib/data-store';
 import { ImageUploadInput } from '@/components/admin/image-upload-input';
 import { extractYouTubeId } from '@/lib/url-normalizer';
-import { Palette, Check, Save, Video, PlayCircle, Share2, Plus, Trash2, Globe, MessageSquare } from 'lucide-react';
+import { Palette, Check, Save, Video, PlayCircle, Share2, Plus, Trash2, Copy } from 'lucide-react';
 
-interface CustomSocialLink {
+interface SocialItem {
   id: string;
   platform: string;
+  customName?: string;
   url: string;
 }
+
+const PLATFORM_OPTIONS = [
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'x', label: 'X (Twitter)' },
+  { value: 'threads', label: 'Threads' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'spotify', label: 'Spotify' },
+  { value: 'apple', label: 'Apple Music' },
+  { value: 'website', label: 'Official Website' },
+  { value: 'custom', label: '+ Add Custom Platform...' },
+] as const;
 
 export default function AppearanceAdminPage() {
   const { activeProfile, refreshData } = useAdminWorkspace();
@@ -25,17 +39,13 @@ export default function AppearanceAdminPage() {
   const [profileType, setProfileType] = useState<'embed' | 'engagement'>('embed');
   const [featuredVideoUrl, setFeaturedVideoUrl] = useState('');
 
-  // Official Social Media Links
-  const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [facebookUrl, setFacebookUrl] = useState('');
-  const [instagramUrl, setInstagramUrl] = useState('');
-  const [xUrl, setXUrl] = useState('');
-  const [threadsUrl, setThreadsUrl] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [customSocials, setCustomSocials] = useState<CustomSocialLink[]>([]);
-
+  // Social Links state (matching Create Profile modal pattern)
+  const [socialLinks, setSocialLinks] = useState<SocialItem[]>([]);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  const allStoredProfiles = getStoredProfiles();
+  const otherProfiles = allStoredProfiles.filter(p => p.id !== (activeProfile?.id || ''));
 
   useEffect(() => {
     if (activeProfile) {
@@ -48,46 +58,73 @@ export default function AppearanceAdminPage() {
       setProfileType(activeProfile.profile_type || 'embed');
       setFeaturedVideoUrl(activeProfile.featured_video_url || activeProfile.youtube_url || '');
 
-      setYoutubeUrl(activeProfile.youtube_url || '');
-      setFacebookUrl(activeProfile.facebook_url || '');
-      setInstagramUrl(activeProfile.instagram_url || '');
-      setXUrl(activeProfile.x_url || '');
-      setThreadsUrl(activeProfile.threads_url || '');
-      setWebsiteUrl(activeProfile.website_url || '');
+      // Load initial social links
+      const initialLinks: SocialItem[] = [];
+      if (activeProfile.youtube_url) initialLinks.push({ id: 'yt', platform: 'youtube', url: activeProfile.youtube_url });
+      if (activeProfile.instagram_url) initialLinks.push({ id: 'ig', platform: 'instagram', url: activeProfile.instagram_url });
+      if (activeProfile.facebook_url) initialLinks.push({ id: 'fb', platform: 'facebook', url: activeProfile.facebook_url });
+      if (activeProfile.x_url) initialLinks.push({ id: 'x', platform: 'x', url: activeProfile.x_url });
+      if (activeProfile.threads_url) initialLinks.push({ id: 'th', platform: 'threads', url: activeProfile.threads_url });
+      if (activeProfile.website_url) initialLinks.push({ id: 'web', platform: 'website', url: activeProfile.website_url });
 
       if (activeProfile.custom_social_links && Array.isArray(activeProfile.custom_social_links)) {
-        setCustomSocials(
-          activeProfile.custom_social_links.map((item, idx) => ({
-            id: `custom-${idx}-${Date.now()}`,
-            platform: item.platform || 'Social',
-            url: item.url || '',
-          }))
-        );
-      } else {
-        setCustomSocials([]);
+        activeProfile.custom_social_links.forEach((c, idx) => {
+          const matchingOpt = PLATFORM_OPTIONS.find(p => p.label.toLowerCase() === c.platform.toLowerCase() || p.value.toLowerCase() === c.platform.toLowerCase());
+          initialLinks.push({
+            id: `custom-${idx}`,
+            platform: matchingOpt ? matchingOpt.value : 'custom',
+            customName: matchingOpt ? undefined : c.platform,
+            url: c.url,
+          });
+        });
       }
 
+      setSocialLinks(initialLinks);
       setError('');
     }
   }, [activeProfile]);
 
   if (!activeProfile) return null;
 
-  const handleAddCustomSocial = () => {
-    setCustomSocials([
-      ...customSocials,
-      { id: `custom-${Date.now()}`, platform: 'Spotify', url: '' },
-    ]);
+  const handleImportSocialsFromProfile = (targetProfileId: string) => {
+    if (!targetProfileId) return;
+    const sourceProfile = allStoredProfiles.find(p => p.id === targetProfileId);
+    if (!sourceProfile) return;
+
+    const imported: SocialItem[] = [];
+    if (sourceProfile.youtube_url) imported.push({ id: `yt-${Date.now()}`, platform: 'youtube', url: sourceProfile.youtube_url });
+    if (sourceProfile.instagram_url) imported.push({ id: `ig-${Date.now()}`, platform: 'instagram', url: sourceProfile.instagram_url });
+    if (sourceProfile.facebook_url) imported.push({ id: `fb-${Date.now()}`, platform: 'facebook', url: sourceProfile.facebook_url });
+    if (sourceProfile.x_url) imported.push({ id: `x-${Date.now()}`, platform: 'x', url: sourceProfile.x_url });
+    if (sourceProfile.threads_url) imported.push({ id: `th-${Date.now()}`, platform: 'threads', url: sourceProfile.threads_url });
+    if (sourceProfile.website_url) imported.push({ id: `web-${Date.now()}`, platform: 'website', url: sourceProfile.website_url });
+
+    if (sourceProfile.custom_social_links) {
+      sourceProfile.custom_social_links.forEach((c, idx) => {
+        imported.push({
+          id: `custom-${idx}-${Date.now()}`,
+          platform: 'custom',
+          customName: c.platform,
+          url: c.url,
+        });
+      });
+    }
+
+    setSocialLinks(imported);
   };
 
-  const handleRemoveCustomSocial = (id: string) => {
-    setCustomSocials(customSocials.filter(s => s.id !== id));
+  const handleAddSocial = () => {
+    const available = PLATFORM_OPTIONS.filter(p => p.value !== 'custom' && !socialLinks.some(s => s.platform === p.value));
+    const nextPlat = available.length > 0 ? available[0].value : 'custom';
+    setSocialLinks([...socialLinks, { id: `soc-${Date.now()}`, platform: nextPlat, customName: '', url: '' }]);
   };
 
-  const handleUpdateCustomSocial = (id: string, field: 'platform' | 'url', val: string) => {
-    setCustomSocials(
-      customSocials.map(s => (s.id === id ? { ...s, [field]: val } : s))
-    );
+  const handleRemoveSocial = (id: string) => {
+    setSocialLinks(socialLinks.filter(s => s.id !== id));
+  };
+
+  const handleUpdateSocial = (id: string, field: 'platform' | 'customName' | 'url', val: string) => {
+    setSocialLinks(socialLinks.map(s => s.id === id ? { ...s, [field]: val } : s));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -107,9 +144,18 @@ export default function AppearanceAdminPage() {
       return;
     }
 
-    const cleanCustomSocials = customSocials
-      .filter(s => s.platform.trim() && s.url.trim())
-      .map(s => ({ platform: s.platform.trim(), url: s.url.trim() }));
+    const getUrl = (plat: string) => {
+      const found = socialLinks.find(s => s.platform === plat);
+      return found && found.url.trim() ? found.url.trim() : null;
+    };
+
+    const customLinks = socialLinks
+      .filter(s => s.platform === 'custom' || !['youtube', 'instagram', 'facebook', 'x', 'threads', 'website'].includes(s.platform))
+      .filter(s => s.url.trim())
+      .map(s => ({
+        platform: s.customName?.trim() || (PLATFORM_OPTIONS.find(p => p.value === s.platform)?.label || 'Social'),
+        url: s.url.trim(),
+      }));
 
     const updatedProfile = {
       ...activeProfile,
@@ -121,13 +167,13 @@ export default function AppearanceAdminPage() {
       accent_color: accentColor,
       profile_type: profileType,
       featured_video_url: featuredVideoUrl.trim() || null,
-      youtube_url: youtubeUrl.trim() || null,
-      facebook_url: facebookUrl.trim() || null,
-      instagram_url: instagramUrl.trim() || null,
-      x_url: xUrl.trim() || null,
-      threads_url: threadsUrl.trim() || null,
-      website_url: websiteUrl.trim() || null,
-      custom_social_links: cleanCustomSocials.length > 0 ? cleanCustomSocials : null,
+      youtube_url: getUrl('youtube'),
+      facebook_url: getUrl('facebook'),
+      instagram_url: getUrl('instagram'),
+      x_url: getUrl('x'),
+      threads_url: getUrl('threads'),
+      website_url: getUrl('website'),
+      custom_social_links: customLinks.length > 0 ? customLinks : null,
       updated_at: new Date().toISOString(),
     };
 
@@ -150,10 +196,10 @@ export default function AppearanceAdminPage() {
       <div>
         <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
           <Palette className="w-5 h-5 text-rose-600" />
-          <span>Appearance & Social Links</span>
+          <span>Appearance</span>
         </h1>
         <p className="text-xs text-slate-600 mt-0.5 font-medium">
-          Customize branding & official social links for workspace: <span className="text-rose-600 font-bold">{activeProfile.title}</span>
+          Customize independent branding & official social links for: <span className="text-rose-600 font-bold">{activeProfile.title}</span>
         </p>
       </div>
 
@@ -161,7 +207,7 @@ export default function AppearanceAdminPage() {
         {savedSuccess && (
           <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-xs">
             <Check className="w-4 h-4 text-emerald-600" />
-            <span>Appearance & Social Links updated successfully!</span>
+            <span>Appearance settings updated successfully!</span>
           </div>
         )}
 
@@ -274,119 +320,6 @@ export default function AppearanceAdminPage() {
           />
         </div>
 
-        {/* Official Social Media Links Section */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
-              <Share2 className="w-4 h-4 text-rose-600" />
-              <span>Official Social Media Links</span>
-            </label>
-            <button
-              type="button"
-              onClick={handleAddCustomSocial}
-              className="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Custom Link</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">YouTube Channel URL</label>
-              <input
-                type="url"
-                value={youtubeUrl}
-                onChange={(e) => setYoutubeUrl(e.target.value)}
-                placeholder="https://www.youtube.com/@JoshCullenOfficial"
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:outline-none focus:border-rose-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Facebook Page URL</label>
-              <input
-                type="url"
-                value={facebookUrl}
-                onChange={(e) => setFacebookUrl(e.target.value)}
-                placeholder="https://facebook.com/..."
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:outline-none focus:border-rose-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Instagram Profile URL</label>
-              <input
-                type="url"
-                value={instagramUrl}
-                onChange={(e) => setInstagramUrl(e.target.value)}
-                placeholder="https://instagram.com/..."
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:outline-none focus:border-rose-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">X (Twitter) Profile URL</label>
-              <input
-                type="url"
-                value={xUrl}
-                onChange={(e) => setXUrl(e.target.value)}
-                placeholder="https://x.com/..."
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:outline-none focus:border-rose-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Threads Profile URL</label>
-              <input
-                type="url"
-                value={threadsUrl}
-                onChange={(e) => setThreadsUrl(e.target.value)}
-                placeholder="https://threads.net/@..."
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:outline-none focus:border-rose-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Official Website URL</label>
-              <input
-                type="url"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:outline-none focus:border-rose-500"
-              />
-            </div>
-          </div>
-
-          {/* Custom Social Links List */}
-          {customSocials.length > 0 && (
-            <div className="pt-2 space-y-2 border-t border-slate-200/80">
-              <span className="text-[11px] font-bold text-slate-700 uppercase">Additional Custom Social Links</span>
-              {customSocials.map((custom) => (
-                <div key={custom.id} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={custom.platform}
-                    onChange={(e) => handleUpdateCustomSocial(custom.id, 'platform', e.target.value)}
-                    placeholder="Platform (e.g. Spotify, TikTok)"
-                    className="w-1/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-500"
-                  />
-                  <input
-                    type="url"
-                    value={custom.url}
-                    onChange={(e) => handleUpdateCustomSocial(custom.id, 'url', e.target.value)}
-                    placeholder="https://..."
-                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:outline-none focus:border-rose-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveCustomSocial(custom.id)}
-                    className="p-2 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Featured Music Video YouTube Link */}
         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
           <label className="block text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
@@ -424,6 +357,100 @@ export default function AppearanceAdminPage() {
           )}
         </div>
 
+        {/* Official Social Links (Matching Create Profile pattern) */}
+        <div className="pt-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-extrabold text-rose-600 uppercase tracking-wider flex items-center gap-1.5">
+              <Share2 className="w-4 h-4" /> Official Social Links
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddSocial}
+              className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Link</span>
+            </button>
+          </div>
+
+          {otherProfiles.length > 0 && (
+            <div className="p-2.5 bg-rose-50/70 border border-rose-200 rounded-xl flex items-center justify-between gap-2 text-xs">
+              <span className="text-rose-900 font-bold flex items-center gap-1.5 shrink-0">
+                <Copy className="w-3.5 h-3.5 text-rose-600" />
+                <span>Autofill Socials from:</span>
+              </span>
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) handleImportSocialsFromProfile(e.target.value);
+                  e.target.value = '';
+                }}
+                className="px-2.5 py-1 bg-white border border-rose-300 rounded-lg text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-600 shadow-2xs cursor-pointer max-w-[240px]"
+              >
+                <option value="" disabled>Select Profile to Copy Socials...</option>
+                {otherProfiles.map(p => (
+                  <option key={p.id} value={p.id}>
+                    Copy from {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {socialLinks.length === 0 ? (
+            <p className="text-[11px] text-slate-500 italic bg-slate-50 border border-slate-200 rounded-xl p-3 text-center font-medium">
+              No social links added yet. Click &quot;Add Link&quot; above to add official links.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {socialLinks.map((item) => (
+                <div key={item.id} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <select
+                    value={item.platform}
+                    onChange={(e) => handleUpdateSocial(item.id, 'platform', e.target.value)}
+                    className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-600 shrink-0"
+                  >
+                    {PLATFORM_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {item.platform === 'custom' && (
+                    <input
+                      type="text"
+                      required
+                      value={item.customName || ''}
+                      onChange={(e) => handleUpdateSocial(item.id, 'customName', e.target.value)}
+                      placeholder="Platform Name (e.g. Weverse)"
+                      className="w-full sm:w-44 px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-600 shadow-xs"
+                    />
+                  )}
+
+                  <input
+                    type="url"
+                    required
+                    value={item.url}
+                    onChange={(e) => handleUpdateSocial(item.id, 'url', e.target.value)}
+                    placeholder={item.platform === 'custom' ? 'https://...' : `Enter ${item.platform} URL...`}
+                    className="flex-1 px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-semibold focus:outline-none focus:border-rose-600 shadow-xs"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSocial(item.id)}
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer shrink-0 self-end sm:self-center"
+                    title="Remove social link"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Accent Theme Color</label>
           <div className="flex items-center gap-3">
@@ -448,7 +475,7 @@ export default function AppearanceAdminPage() {
             className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-colors cursor-pointer"
           >
             <Save className="w-4 h-4" />
-            <span>Save Appearance & Social Links</span>
+            <span>Save Appearance Settings</span>
           </button>
         </div>
       </form>
