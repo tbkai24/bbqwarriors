@@ -116,7 +116,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 - Employs strict single-notification tagging (`tag: notifTag`, `renotify: false`) to ensure exactly **1 clean notification banner** is displayed per broadcast instead of duplicate spam.
 - Listens to `notificationclick` events, automatically closing the notification banner and navigating to the target URL (or focusing an existing active client window).
 
-### Database Schema for Web Push (`supabase/migrations/20260808000005_create_notifications_tables.sql`)
+### Database Schema for Web Push (`supabase/migrations/20260930000002_web_push_notifications.sql`)
 1. **`push_subscriptions` Table**:
    - `id`: `UUID PRIMARY KEY DEFAULT gen_random_uuid()`
    - `endpoint`: `TEXT UNIQUE NOT NULL`
@@ -126,7 +126,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 2. **`notifications` Table**:
    - `id`: `UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-   - `profile_id`: `UUID REFERENCES public.profiles(id)`
+   - `profile_id`: `UUID REFERENCES public.bbq_warriors_profiles(id)`
    - `title`: `TEXT NOT NULL`
    - `message`: `TEXT NOT NULL`
    - `type`: `TEXT DEFAULT 'announcement'`
@@ -248,14 +248,7 @@ During admin authentication on `/admin/login`, browser network interruptions or 
 ### 1. The Problem Solved
 When rows were added manually in the Supabase Table Editor under `Role: postgres`, the production app (`https://bbqwarriors.vercel.app/admin`) queried Supabase using the browser `Role: anon`. If Row-Level Security (RLS) policies were not enabled for `anon` access or if fields like `status` or `slug` were left `NULL`, Supabase blocked the queries or returned empty arrays (`data: []`), causing the admin dashboard to render "No Active Profile".
 
-### 2. The Solution (`lib/data-store.ts`, `app/api/public/data/route.ts`, `supabase/migrations/20260928000000_...sql`)
-- **Automatic Fallback for `slug` & `status`**: In `lib/data-store.ts`, if `sp.slug` or `sp.status` is `NULL` (e.g. manually added rows), it automatically computes `slug` from `title` (e.g. `Like Mw MV` -> `like-mw-mv`) and defaults `status` to `'published'`.
-- **Edge API Fetch Query (`app/api/public/data/route.ts`)**: Updated the REST query filter to `?select=*&or=(status.eq.published,status.is.null)&order=created_at.desc`, ensuring manual rows with `NULL` status are not hidden from public or admin data calls.
-- **Supabase Migration RLS Policies**: Created PostgreSQL migration script `supabase/migrations/20260928000000_add_custom_social_links_to_bbq_warriors_profiles.sql` enabling `FOR ALL` RLS policies (`USING (true) WITH CHECK (true)`) on `bbq_warriors_profiles`, `bbq_warriors_articles`, `bbq_warriors_analytics`, and `bbq_warriors_submissions`.
-
-
-
-
-
-
-
+### 2. The Solution (`lib/data-store.ts`, `app/api/public/data/route.ts`, `supabase/migrations/20260930000001_bbq_warriors_core_schema.sql`)
+- **Automatic Fallback for `slug` & `status`**: In `lib/data-store.ts`, if `sp.slug` or `sp.status` is `NULL` (e.g. manually added rows), it automatically computes `slug` from `title` (e.g. `Like Me MV` -> `like-me-mv`) and defaults `status` to `'published'`.
+- **Edge API Fetch Query (`app/api/public/data/route.ts`)**: Updated the REST query filter to `?select=*&or=(status.eq.published,status.is.null)&order=display_order.asc,created_at.desc`, ensuring manual rows with `NULL` status are not hidden from public or admin data calls.
+- **Supabase Migration RLS Policies**: Consolidated in `supabase/migrations/20260930000001_bbq_warriors_core_schema.sql` enabling `FOR ALL` RLS policies (`USING (true) WITH CHECK (true)`) on `bbq_warriors_profiles`, `bbq_warriors_articles`, `bbq_warriors_analytics`, and `bbq_warriors_submissions`.

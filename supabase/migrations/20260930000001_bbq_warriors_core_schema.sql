@@ -1,5 +1,5 @@
 -- =========================================================================
--- BBQ WARRIORS DATABASE SCHEMA (schema/bbqwarrior.sql)
+-- BBQ WARRIORS DATABASE SCHEMA (supabase/migrations/01_bbq_warriors_core_schema.sql)
 -- Custom Schema for Josh Cullen & BBQ Warriors Multi-Media Hub
 -- Features: BBQ Warriors unique columns, embedded YouTube MVs, official Spotify & YouTube links
 -- Zero overlap with legacy `yt_streamers` or standard `profiles` tables.
