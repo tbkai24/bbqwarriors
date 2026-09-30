@@ -141,7 +141,10 @@ export default function SocialLinksAdminPage() {
 
     refreshData();
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    setTimeout(() => setSavedSuccess(false), 4000);
   };
 
   return (
