@@ -115,7 +115,15 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
       if (edgeRes.ok) {
         const edgeJson = await edgeRes.json();
         if (edgeJson.profiles && Array.isArray(edgeJson.profiles) && edgeJson.profiles.length > 0) {
-          const cleanProfs = edgeJson.profiles.filter((p: Profile) => !p.title.includes('SB19 '));
+          const cleanProfs = edgeJson.profiles
+            .filter((p: Profile) => !p.title.includes('SB19 '))
+            .map((sp: Profile, idx: number) => ({
+              ...sp,
+              slug: sp.slug || sp.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `profile-${sp.id.substring(0, 6)}`,
+              status: sp.status || 'published',
+              display_order: sp.display_order ?? idx + 1,
+            }))
+            .sort((a: Profile, b: Profile) => (a.display_order ?? 999) - (b.display_order ?? 999));
           saveProfiles(cleanProfs);
           cachedProfiles = { data: cleanProfs, timestamp: now };
           return cleanProfs;

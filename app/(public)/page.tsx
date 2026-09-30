@@ -19,8 +19,8 @@ export default function PublicHomePage() {
 
   const loadData = async () => {
     // 1. Initial local load
-    const localProfiles = getStoredProfiles().filter(p => p.status === 'published');
-    const localArticles = getStoredArticles().filter(a => a.status === 'published');
+    const localProfiles = getStoredProfiles().filter(p => !p.status || p.status === 'published');
+    const localArticles = getStoredArticles().filter(a => !a.status || a.status === 'published');
     setProfiles(localProfiles);
     setArticles(localArticles);
 
@@ -30,9 +30,9 @@ export default function PublicHomePage() {
       const dbArticles = await fetchArticlesFromSupabase();
 
       const publishedProfs = dbProfiles
-        .filter(p => p.status === 'published')
+        .filter(p => !p.status || p.status === 'published')
         .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
-      const publishedArts = dbArticles.filter(a => a.status === 'published');
+      const publishedArts = dbArticles.filter(a => !a.status || a.status === 'published');
 
       setProfiles(publishedProfs);
       setArticles(publishedArts);
