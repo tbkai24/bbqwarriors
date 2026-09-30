@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Profile, Article } from '@/types/database';
-import { getStoredProfiles, getStoredArticles, fetchProfilesFromSupabase, fetchArticlesFromSupabase } from '@/lib/data-store';
+import { getStoredProfiles, getStoredArticles, fetchProfilesFromSupabase, fetchArticlesFromSupabase, isArticleForProfile } from '@/lib/data-store';
 import { getCloudinaryImageUrl } from '@/lib/cloudinary';
 import { PublicFooter } from '@/components/public/footer';
 import { BrandLogo } from '@/components/public/logo';
@@ -52,8 +52,8 @@ export default function PublicHomePage() {
     (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const getArticleCount = (profileId: string) => {
-    return articles.filter(a => a.profile_id === profileId).length;
+  const getArticleCount = (profile: Profile) => {
+    return articles.filter(a => isArticleForProfile(a, profile)).length;
   };
 
   return (
@@ -114,7 +114,7 @@ export default function PublicHomePage() {
             </div>
           ) : (
             filteredProfiles.map((profile) => {
-              const count = getArticleCount(profile.id);
+              const count = getArticleCount(profile);
               return (
                 <div
                   key={profile.id}

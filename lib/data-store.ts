@@ -159,7 +159,7 @@ export async function fetchProfilesFromSupabase(forceFresh = false): Promise<Pro
           status: computedStatus,
           featured_video_url: validVideoUrl,
           embedded_youtube_mv_url: validVideoUrl,
-          youtube_url: sp.youtube_url ?? (sp as any).official_youtube_channel_url ?? null,
+          youtube_url: sp.youtube_url ?? null,
           display_order: sp.display_order ?? lp?.display_order ?? idx + 1,
           custom_social_links: sp.custom_social_links ?? lp?.custom_social_links ?? null,
         };
@@ -266,24 +266,65 @@ export function saveArticles(articles: Article[]) {
   }
 }
 
-function sanitizeForBbqWarriorsArticles(article: Partial<Article>) {
+export function isArticleForProfile(article: Article, profile: Profile): boolean {
+  if (!article || !profile) return false;
+  const pid = article.profile_id || (article as any).bbq_profile_id;
+  if (!pid) return false;
+
+  return (
+    pid === profile.id ||
+    pid === (profile as any).bbq_warrior_id ||
+    pid === profile.slug
+  );
+}
+
+export function resolveProfileUuid(targetIdOrSlug: string, profilesList?: Profile[]): string {
+  if (!targetIdOrSlug) return '';
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetIdOrSlug);
+  if (isUuid) return targetIdOrSlug;
+
+  const profiles = profilesList && profilesList.length > 0 ? profilesList : getStoredProfiles();
+  const match = profiles.find(
+    p => p.id === targetIdOrSlug || (p as any).bbq_warrior_id === targetIdOrSlug || p.slug === targetIdOrSlug
+  );
+  if (match?.id) return match.id;
+
+  return targetIdOrSlug;
+}
+
+function sanitizeForBbqWarriorsArticles(article: Partial<Article>, profilesList?: Profile[]) {
   const allowed = [
     'id', 'bbq_profile_id', 'article_url', 'canonical_url', 'website_name', 'title',
     'stream_type', 'embedded_youtube_mv_id', 'embedded_spotify_id',
     'thumbnail', 'description', 'highlight_quote', 'display_order', 'status',
     'clicks_count', 'device_breakdown', 'country_breakdown', 'created_at', 'updated_at'
   ];
-  const profileId = article.profile_id || (article as any).bbq_profile_id;
+  const rawProfileId = article.profile_id || (article as any).bbq_profile_id;
+  const resolvedUuid = resolveProfileUuid(rawProfileId, profilesList);
+
   const clean: Record<string, any> = {};
   for (const k of Object.keys(article)) {
     if (allowed.includes(k) && (article as any)[k] !== undefined) {
       clean[k] = (article as any)[k];
     }
   }
-  if (profileId) {
-    clean.bbq_profile_id = profileId;
+  if (resolvedUuid) {
+    clean.bbq_profile_id = resolvedUuid;
   }
   delete clean.profile_id;
+
+  if (!clean.website_name) {
+    const targetUrl = clean.canonical_url || clean.article_url;
+    if (targetUrl) {
+      try {
+        clean.website_name = new URL(targetUrl).hostname.replace('www.', '');
+      } catch {
+        clean.website_name = 'Web Article';
+      }
+    } else {
+      clean.website_name = 'Web Article';
+    }
+  }
   return clean;
 }
 
@@ -367,11 +408,25 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
 export async function saveArticleToSupabase(article: Partial<Article>): Promise<{ success: boolean; error?: string; data?: Article }> {
   clearDataStoreCache();
 
-  const profileId = article.profile_id || (article as any).bbq_profile_id;
+  const rawProfileId = article.profile_id || (article as any).bbq_profile_id;
+  const profiles = getStoredProfiles();
+  const resolvedUuid = resolveProfileUuid(rawProfileId, profiles);
+  const profileId = resolvedUuid || rawProfileId;
+
+  let websiteName = article.website_name;
+  if (!websiteName && (article.canonical_url || article.article_url)) {
+    try {
+      websiteName = new URL(article.canonical_url || article.article_url!).hostname.replace('www.', '');
+    } catch {
+      websiteName = 'Web Article';
+    }
+  }
+
   const formattedArticle = {
     ...article,
     profile_id: profileId,
     bbq_profile_id: profileId,
+    website_name: websiteName || 'Web Article',
   } as Article;
 
   // 1. Update local storage immediately so local additions persist instantly
@@ -388,7 +443,7 @@ export async function saveArticleToSupabase(article: Partial<Article>): Promise<
 
   try {
     const supabase = createClient();
-    const sanitized = sanitizeForBbqWarriorsArticles(formattedArticle);
+    const sanitized = sanitizeForBbqWarriorsArticles(formattedArticle, profiles);
 
     const res = await supabase
       .from('bbq_warriors_articles')

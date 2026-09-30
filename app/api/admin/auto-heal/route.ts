@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       }
 
       // Check & fix video URLs (sync embedded_youtube_mv_url and featured_video_url)
-      const validVideoUrl = prof.featured_video_url || prof.embedded_youtube_mv_url || (prof.youtube_url && prof.youtube_url.includes('v=') ? prof.youtube_url : null);
+      const validVideoUrl = prof.featured_video_url || prof.embedded_youtube_mv_url || null;
       if (validVideoUrl && prof.embedded_youtube_mv_url !== validVideoUrl) {
         updates.embedded_youtube_mv_url = validVideoUrl;
         repairs.push({ field: 'embedded_youtube_mv_url', profileId: prof.id, oldValue: prof.embedded_youtube_mv_url, newValue: validVideoUrl });

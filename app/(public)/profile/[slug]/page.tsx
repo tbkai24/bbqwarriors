@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, use } from 'react';
 import Link from 'next/link';
 import { Profile, Article } from '@/types/database';
-import { getStoredProfiles, getStoredArticles, fetchProfilesFromSupabase, fetchArticlesFromSupabase, recordProfileView } from '@/lib/data-store';
+import { getStoredProfiles, getStoredArticles, fetchProfilesFromSupabase, fetchArticlesFromSupabase, recordProfileView, isArticleForProfile } from '@/lib/data-store';
 import { createClient } from '@/lib/supabase/client';
 import { getCloudinaryImageUrl } from '@/lib/cloudinary';
 import { extractYouTubeId, decodeHtmlEntities, isEligibleForArticleOfTheDay, translateTextToEnglish, compareByFrontNumber } from '@/lib/url-normalizer';
@@ -144,7 +144,7 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
         recordProfileView(localMatch.id);
       }
       const localArticles = getStoredArticles()
-        .filter(a => (a.profile_id === localMatch.id || a.profile_id === (localMatch as any).bbq_warrior_id || a.profile_id === localMatch.slug) && (!a.status || a.status === 'published'))
+        .filter(a => isArticleForProfile(a, localMatch) && (!a.status || a.status === 'published'))
         .sort((a, b) => a.display_order !== b.display_order ? a.display_order - b.display_order : compareByFrontNumber(a.title, b.title, 'asc'));
       setArticles(localArticles);
     }
@@ -168,7 +168,7 @@ export default function PublicProfilePage({ params }: ProfilePageProps) {
         }
         const fetchedArticles = await fetchArticlesFromSupabase();
         const profileArts = fetchedArticles
-          .filter(a => (a.profile_id === supabaseMatch.id || a.profile_id === (supabaseMatch as any).bbq_warrior_id || a.profile_id === supabaseMatch.slug) && (!a.status || a.status === 'published'))
+          .filter(a => isArticleForProfile(a, supabaseMatch!) && (!a.status || a.status === 'published'))
           .sort((a, b) => a.display_order !== b.display_order ? a.display_order - b.display_order : compareByFrontNumber(a.title, b.title, 'asc'));
         setArticles(profileArts);
       }

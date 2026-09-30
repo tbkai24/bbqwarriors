@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAdminWorkspace } from '../layout';
 import { Article, ExtractedMetadata } from '@/types/database';
-import { getStoredArticles, saveArticles, saveArticleToSupabase, updateArticleStatusInSupabase, updateArticlesOrderInSupabase, deleteArticleFromSupabase, generateUUID } from '@/lib/data-store';
+import { getStoredArticles, saveArticles, saveArticleToSupabase, updateArticleStatusInSupabase, updateArticlesOrderInSupabase, deleteArticleFromSupabase, generateUUID, isArticleForProfile } from '@/lib/data-store';
 import { normalizeUrl, decodeHtmlEntities, isEligibleForArticleOfTheDay, translateTextToEnglish, extractFrontNumber, compareByFrontNumber } from '@/lib/url-normalizer';
 import { ImageUploadInput } from '@/components/admin/image-upload-input';
 import { DeleteConfirmModal } from '@/components/admin/delete-confirm-modal';
@@ -143,7 +143,7 @@ export default function ArticlesAdminPage() {
   };
 
   const profileArticles = articles
-    .filter(a => a.profile_id === activeProfile.id || a.profile_id === (activeProfile as any).bbq_warrior_id || a.profile_id === activeProfile.slug)
+    .filter(a => isArticleForProfile(a, activeProfile))
     .sort((a, b) => a.display_order - b.display_order);
 
   const activeArticles = profileArticles.filter(a => !a.status || a.status === 'published');

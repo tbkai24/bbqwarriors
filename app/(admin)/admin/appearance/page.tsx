@@ -56,7 +56,7 @@ export default function AppearanceAdminPage() {
       setProfileImage(activeProfile.profile_image || '');
       setAccentColor(activeProfile.accent_color || '#e11d48');
       setProfileType(activeProfile.profile_type || 'embed');
-      setFeaturedVideoUrl(activeProfile.featured_video_url || activeProfile.youtube_url || '');
+      setFeaturedVideoUrl(activeProfile.featured_video_url || (activeProfile as any).embedded_youtube_mv_url || '');
 
       // Load initial social links
       const initialLinks: SocialItem[] = [];
