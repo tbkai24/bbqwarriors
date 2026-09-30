@@ -145,9 +145,11 @@ export default function PublicHomePage() {
                             {count} {count === 1 ? 'article' : 'articles'}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 line-clamp-2 font-medium">
-                          {profile.description || 'Compilation of Josh Cullen MV embeds & official Spotify tracks.'}
-                        </p>
+                        {profile.description && (
+                          <p className="text-xs text-slate-500 line-clamp-2 font-medium">
+                            {profile.description}
+                          </p>
+                        )}
                       </div>
 
                       {/* Arrow Icon Button */}
