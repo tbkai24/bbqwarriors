@@ -44,7 +44,7 @@ export function BrandLogo({ size = 'md', showText = true }: LogoProps) {
           <span className="font-extrabold text-slate-900 [.cyber-dark-theme_&]:text-white tracking-tight leading-none text-sm group-hover:text-sky-600 transition-colors">
             BBQ <span className="text-sky-600 [.cyber-dark-theme_&]:text-sky-400">Warriors</span>
           </span>
-          <span className="text-[10px] text-slate-600 [.cyber-dark-theme_&]:text-slate-400 font-semibold tracking-wide">Josh Cullen Streamer & Support Hub</span>
+          <span className="text-[10px] text-slate-600 [.cyber-dark-theme_&]:text-slate-400 font-semibold tracking-wide">Josh Cullen Streaming & Support Hub</span>
         </div>
       )}
     </Link>

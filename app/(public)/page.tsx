@@ -144,7 +144,7 @@ export default function PublicHomePage() {
                             {profile.title}
                           </h2>
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 shrink-0">
-                            {count} articles
+                            {count} {count === 1 ? 'article' : 'articles'}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-2 font-medium">
