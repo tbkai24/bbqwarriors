@@ -178,7 +178,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="mt-8 text-center text-xs text-slate-500 font-medium">
-          <p>© {new Date().getFullYear()} BBQ Warriors - Josh Cullen Streaming Hub. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} BBQ Warriors. All rights reserved.</p>
         </div>
       </main>
     </div>
