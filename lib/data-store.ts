@@ -405,12 +405,42 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
       const merged = Array.from(map.values()).sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
       saveArticles(merged);
       cachedArticles = { data: merged, timestamp: now };
+
+      // Auto-push any local unsynced articles to Supabase DB in background
+      setTimeout(() => {
+        syncLocalArticlesToSupabase();
+      }, 500);
+
       return merged;
     }
   } catch {
     // Ignore
   }
   return getStoredArticles();
+}
+
+export async function syncLocalArticlesToSupabase(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const localArticles = getStoredArticles();
+  if (localArticles.length === 0) return;
+
+  try {
+    const supabase = createClient();
+    const { data: dbArticles, error } = await supabase.from('bbq_warriors_articles').select('id');
+    if (error || !dbArticles) return;
+
+    const dbIds = new Set(dbArticles.map(a => a.id));
+    const unSynced = localArticles.filter(a => !dbIds.has(a.id));
+
+    if (unSynced.length > 0) {
+      console.log(`[DATA STORE] Syncing ${unSynced.length} unsynced local articles to Supabase DB...`);
+      for (const art of unSynced) {
+        await saveArticleToSupabase(art);
+      }
+    }
+  } catch (err) {
+    console.warn('syncLocalArticlesToSupabase notice:', err);
+  }
 }
 
 export async function saveArticleToSupabase(article: Partial<Article>): Promise<{ success: boolean; error?: string; data?: Article }> {
