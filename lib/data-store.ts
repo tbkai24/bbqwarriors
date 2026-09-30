@@ -304,8 +304,8 @@ function sanitizeForBbqWarriorsArticles(article: Partial<Article>, profilesList?
   const allowed = [
     'id', 'bbq_profile_id', 'article_url', 'canonical_url', 'website_name', 'title',
     'stream_type', 'embedded_youtube_mv_id', 'embedded_spotify_id',
-    'thumbnail', 'description', 'highlight_quote', 'display_order', 'status',
-    'clicks_count', 'device_breakdown', 'country_breakdown', 'created_at', 'updated_at'
+    'thumbnail', 'description', 'display_order', 'status',
+    'clicks_count', 'created_at', 'updated_at'
   ];
   const rawProfileId = article.profile_id || (article as any).bbq_profile_id;
   const resolvedUuid = resolveProfileUuid(rawProfileId, profilesList);
@@ -351,23 +351,15 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
       if (edgeRes.ok) {
         const edgeJson = await edgeRes.json();
         if (edgeJson.articles && Array.isArray(edgeJson.articles)) {
-          const localArticles = getStoredArticles();
-          const map = new Map<string, Article>();
-          localArticles.forEach(a => map.set(a.id, a));
-          edgeJson.articles.forEach((a: any) => {
-            const pid = a.profile_id || a.bbq_profile_id;
-            map.set(a.id, { 
-              ...a, 
-              profile_id: pid,
-              bbq_profile_id: pid,
-              status: a.status || 'published' 
-            });
-          });
-
-          const merged = Array.from(map.values()).sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
-          saveArticles(merged);
-          cachedArticles = { data: merged, timestamp: now };
-          return merged;
+          const cleanArticles = edgeJson.articles.map((a: any) => ({
+            ...a,
+            profile_id: a.bbq_profile_id || a.profile_id,
+            bbq_profile_id: a.bbq_profile_id || a.profile_id,
+            status: a.status || 'published',
+          }));
+          saveArticles(cleanArticles);
+          cachedArticles = { data: cleanArticles, timestamp: now };
+          return cleanArticles;
         }
       }
     } catch {
@@ -380,7 +372,7 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
     let queryPromise = supabase
       .from('bbq_warriors_articles')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('display_order', { ascending: true });
 
     const timeoutPromise = new Promise<{ data: any; error: any }>(resolve =>
       setTimeout(() => resolve({ data: null, error: new Error('Timeout') }), 6000)
@@ -388,30 +380,25 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
 
     let { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
+    if (error && error.message !== 'Timeout') {
+      const fallbackRes = await supabase
+        .from('bbq_warriors_articles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
+
     if (!error && data) {
-      const localArticles = getStoredArticles();
-      const map = new Map<string, Article>();
-      localArticles.forEach(a => map.set(a.id, a));
-      (data as any[]).forEach(a => {
-        const pid = a.profile_id || a.bbq_profile_id;
-        map.set(a.id, { 
-          ...a, 
-          profile_id: pid,
-          bbq_profile_id: pid,
-          status: a.status || 'published' 
-        });
-      });
-
-      const merged = Array.from(map.values()).sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
-      saveArticles(merged);
-      cachedArticles = { data: merged, timestamp: now };
-
-      // Auto-push any local unsynced articles to Supabase DB in background
-      setTimeout(() => {
-        syncLocalArticlesToSupabase();
-      }, 500);
-
-      return merged;
+      const cleanArticles = (data as any[]).map((a: any) => ({
+        ...a,
+        profile_id: a.bbq_profile_id || a.profile_id,
+        bbq_profile_id: a.bbq_profile_id || a.profile_id,
+        status: a.status || 'published',
+      }));
+      saveArticles(cleanArticles);
+      cachedArticles = { data: cleanArticles, timestamp: now };
+      return cleanArticles;
     }
   } catch {
     // Ignore
@@ -419,35 +406,11 @@ export async function fetchArticlesFromSupabase(forceFresh = false): Promise<Art
   return getStoredArticles();
 }
 
-export async function syncLocalArticlesToSupabase(): Promise<void> {
-  if (typeof window === 'undefined') return;
-  const localArticles = getStoredArticles();
-  if (localArticles.length === 0) return;
-
-  try {
-    const supabase = createClient();
-    const { data: dbArticles, error } = await supabase.from('bbq_warriors_articles').select('id');
-    if (error || !dbArticles) return;
-
-    const dbIds = new Set(dbArticles.map(a => a.id));
-    const unSynced = localArticles.filter(a => !dbIds.has(a.id));
-
-    if (unSynced.length > 0) {
-      console.log(`[DATA STORE] Syncing ${unSynced.length} unsynced local articles to Supabase DB...`);
-      for (const art of unSynced) {
-        await saveArticleToSupabase(art);
-      }
-    }
-  } catch (err) {
-    console.warn('syncLocalArticlesToSupabase notice:', err);
-  }
-}
-
 export async function saveArticleToSupabase(article: Partial<Article>): Promise<{ success: boolean; error?: string; data?: Article }> {
   clearDataStoreCache();
 
-  const rawProfileId = article.profile_id || (article as any).bbq_profile_id;
   const profiles = getStoredProfiles();
+  const rawProfileId = article.profile_id || (article as any).bbq_profile_id;
   const resolvedUuid = resolveProfileUuid(rawProfileId, profiles);
   const profileId = resolvedUuid || rawProfileId;
 
@@ -467,18 +430,6 @@ export async function saveArticleToSupabase(article: Partial<Article>): Promise<
     website_name: websiteName || 'Web Article',
   } as Article;
 
-  // 1. Update local storage immediately so local additions persist instantly
-  if (formattedArticle.id) {
-    const current = getStoredArticles();
-    const idx = current.findIndex(a => a.id === formattedArticle.id);
-    if (idx >= 0) {
-      current[idx] = { ...current[idx], ...formattedArticle };
-    } else {
-      current.unshift(formattedArticle);
-    }
-    saveArticles(current);
-  }
-
   try {
     const supabase = createClient();
     const sanitized = sanitizeForBbqWarriorsArticles(formattedArticle, profiles);
@@ -489,27 +440,34 @@ export async function saveArticleToSupabase(article: Partial<Article>): Promise<
       .select()
       .maybeSingle();
 
-    if (!res.error && res.data) {
-      const returnedPid = res.data.profile_id || res.data.bbq_profile_id || profileId;
+    if (res.error) {
+      console.warn('Supabase saveArticle notice:', res.error.message || res.error);
+      return { success: false, error: res.error.message || 'Failed to save article to database.' };
+    }
+
+    if (res.data) {
+      const returnedPid = res.data.bbq_profile_id || res.data.profile_id || profileId;
       const resultData = {
         ...formattedArticle,
         ...res.data,
         profile_id: returnedPid,
         bbq_profile_id: returnedPid,
       } as Article;
+
       const all = getStoredArticles();
       const idx = all.findIndex(a => a.id === resultData.id);
       if (idx >= 0) all[idx] = resultData;
       else all.unshift(resultData);
       saveArticles(all);
+
       return { success: true, data: resultData };
-    } else if (res.error) {
-      console.warn('Supabase saveArticle error:', res.error);
     }
   } catch (err: any) {
-    console.warn('Supabase saveArticle notice:', err?.message || err);
+    console.warn('Supabase saveArticle error:', err?.message || err);
+    return { success: false, error: err?.message || 'Server error while saving article.' };
   }
-  return { success: true, data: formattedArticle };
+
+  return { success: false, error: 'Failed to save article.' };
 }
 
 export async function updateArticleStatusInSupabase(articleId: string, status: ArticleStatus): Promise<{ success: boolean; error?: string }> {

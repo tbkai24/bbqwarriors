@@ -19,11 +19,11 @@ export async function GET() {
   try {
     // Query strictly BBQ Warriors isolated tables with no-store cache
     const [profilesRes, articlesRes] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_profiles?select=*&or=(status.eq.published,status.is.null)&order=created_at.desc`, {
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_profiles?select=*&or=(status.eq.published,status.is.null)&order=display_order.asc,created_at.desc`, {
         headers,
         cache: 'no-store',
       }),
-      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_articles?select=*&or=(status.eq.published,status.is.null)&order=created_at.desc`, {
+      fetch(`${supabaseUrl}/rest/v1/bbq_warriors_articles?select=*&or=(status.eq.published,status.is.null)&order=display_order.asc,created_at.desc`, {
         headers,
         cache: 'no-store',
       }),
@@ -34,8 +34,9 @@ export async function GET() {
     const articles = Array.isArray(rawArticles)
       ? rawArticles.map((a: any) => ({
           ...a,
-          profile_id: a.profile_id || a.bbq_profile_id,
+          profile_id: a.bbq_profile_id || a.profile_id,
           bbq_profile_id: a.bbq_profile_id || a.profile_id,
+          status: a.status || 'published',
         }))
       : [];
 

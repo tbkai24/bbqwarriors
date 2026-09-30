@@ -276,14 +276,17 @@ export default function ArticlesAdminPage() {
         highlight_quote: highlightQuote.trim() || null,
         updated_at: new Date().toISOString(),
       };
-      const updated = allArticles.map(a => a.id === editingArticle.id ? updatedArticle : a);
-      saveArticles(updated);
-      await saveArticleToSupabase(updatedArticle);
-      showToast('Article updated successfully!', 'success');
+      const res = await saveArticleToSupabase(updatedArticle);
+      if (res.success) {
+        showToast('Article updated successfully!', 'success');
+      } else {
+        showToast(res.error || 'Failed to update article.', 'rose');
+      }
     } else {
       // Check for URL duplication within active profile
       const duplicate = allArticles.find(
-        a => a.profile_id === activeProfile.id && (a.canonical_url === normalized || a.article_url === url.trim())
+        a => (a.profile_id === activeProfile.id || (a as any).bbq_profile_id === activeProfile.id) &&
+             (a.canonical_url === normalized || a.article_url === url.trim())
       );
 
       if (duplicate) {
@@ -307,9 +310,12 @@ export default function ArticlesAdminPage() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      saveArticles([newArt, ...allArticles]);
-      await saveArticleToSupabase(newArt);
-      showToast('Article published and saved to workspace!', 'success');
+      const res = await saveArticleToSupabase(newArt);
+      if (res.success) {
+        showToast('Article published and saved to workspace!', 'success');
+      } else {
+        showToast(res.error || 'Failed to save article.', 'rose');
+      }
     }
 
     setSubmitting(false);

@@ -18,10 +18,19 @@ This document provides a comprehensive reusable blueprint of the solutions, data
 
 ---
 
-## 1.5. 🍖 BBQ Warriors & Josh Cullen Multi-Media Schema (`bbqwarrior.sql`)
-- **Schema Isolation**: Dedicated `bbqwarrior.sql` schema (`bbq_warriors_profiles`, `bbq_warriors_articles`, `bbq_warriors_analytics`) designed specifically for Josh Cullen and BBQ Warriors.
-- **Zero-Overlap Guarantee**: Prefixed SQL tables prevent collision with legacy `yt_streamers` or standard `profiles`.
-- **Multi-Platform Support**: Unique columns for embedded YouTube MVs, official Spotify playlists, single tracks, and verified media articles.
+## 1.5. 🍖 BBQ Warriors Schema Clean-Up & Direct Data Layer Architecture
+- **Schema Isolation**: Dedicated PostgreSQL tables (`bbq_warriors_profiles`, `bbq_warriors_articles`) strictly isolated from legacy tables.
+- **Reference Project Architecture**: Directly mirrors the robust, bug-free data flow of `SB19 YT Streamers Embeded link`:
+  - Removed confusing client-side local storage merge maps that previously caused phantom/ghost article resurrection and out-of-sync devices.
+  - Direct Supabase PostgreSQL upserts: Articles write straight to `bbq_warriors_articles` with strict column alignment (eliminating `PGRST204` schema cache errors caused by non-existent columns like `highlight_quote`).
+  - Seamless foreign key mapping: `bbq_profile_id` <-> `profile_id` ensures consistent UUID resolution across mobile phones, tablets, and desktops.
+  - Fast, un-cached public API delivery: `/api/public/data` serves real-time published profiles and articles with `Cache-Control: no-store`.
+- **Complete Support Removal**:
+  - Removed all Support / Donation QR modals, buttons, and references from public headers, footers, and profile views.
+  - Footer strictly displays: `© 2026 BBQ Warriors. All rights reserved.`
+  - Supabase profiles cleared of support fields (`support_qr_options = []`, `support_qr_image = null`).
+- **Clean DB State**:
+  - `bbq_warriors_articles` table completely cleared (0 articles), ready for fresh, bug-free article additions via the admin panel.
 
 
 ---

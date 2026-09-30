@@ -7,7 +7,6 @@ import { getStoredProfiles, getStoredArticles, fetchProfilesFromSupabase, fetchA
 import { getCloudinaryImageUrl } from '@/lib/cloudinary';
 import { PublicFooter } from '@/components/public/footer';
 import { BrandLogo } from '@/components/public/logo';
-import { SupportModal } from '@/components/public/support-modal';
 import { Search, ArrowRight, Music } from 'lucide-react';
 
 export default function PublicHomePage() {
@@ -15,7 +14,6 @@ export default function PublicHomePage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   const loadData = async () => {
     // 1. Initial local load
@@ -165,13 +163,8 @@ export default function PublicHomePage() {
         </div>
 
         {/* Footer */}
-        <PublicFooter onOpenSupport={() => setIsSupportModalOpen(true)} />
+        <PublicFooter />
       </main>
-
-      {/* Support Modal */}
-      {isSupportModalOpen && (
-        <SupportModal isOpen={isSupportModalOpen} onClose={() => setIsSupportModalOpen(false)} />
-      )}
     </div>
   );
 }
