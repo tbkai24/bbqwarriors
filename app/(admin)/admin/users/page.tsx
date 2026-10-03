@@ -25,6 +25,8 @@ import {
   CheckCircle2,
   X,
   AlertTriangle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export default function AdminUsersPage() {
@@ -33,6 +35,10 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+
+  // Password visibility state
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [showFormPassword, setShowFormPassword] = useState(false);
 
   // Form fields
   const [email, setEmail] = useState('');
@@ -258,7 +264,17 @@ export default function AdminUsersPage() {
                       <div className="flex items-center gap-3 text-xs text-slate-500 font-medium mt-0.5">
                         <span className="font-mono">{u.email}</span>
                         <span>•</span>
-                        <span>Password: <span className="font-mono text-slate-700 font-bold">{u.password || '••••••••'}</span></span>
+                        <div className="flex items-center gap-1">
+                          <span>Password: <span className="font-mono text-slate-700 font-bold">{showPasswords[u.id] ? (u.password || '••••••••') : '••••••••'}</span></span>
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
+                            className="p-0.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                            title={showPasswords[u.id] ? "Hide password" : "Show password"}
+                          >
+                            {showPasswords[u.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -340,14 +356,24 @@ export default function AdminUsersPage() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
                   <KeyRound className="w-3.5 h-3.5 text-rose-600" /> Account Password
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter login password..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-900 font-bold focus:outline-none focus:border-rose-500"
-                />
+                <div className="relative flex items-center">
+                  <input
+                    type={showFormPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter login password..."
+                    className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-900 font-bold focus:outline-none focus:border-rose-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFormPassword(!showFormPassword)}
+                    className="absolute right-3 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                    title={showFormPassword ? "Hide password" : "Show password"}
+                  >
+                    {showFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
