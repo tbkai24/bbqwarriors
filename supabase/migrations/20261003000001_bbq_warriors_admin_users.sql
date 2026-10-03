@@ -24,9 +24,11 @@ ALTER TABLE public.bbq_warriors_admin_users ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable all for bbq_warriors_admin_users" ON public.bbq_warriors_admin_users;
 CREATE POLICY "Enable all for bbq_warriors_admin_users" ON public.bbq_warriors_admin_users FOR ALL USING (true) WITH CHECK (true);
 
--- Seed default Super Admin & Content Editor accounts if not present
+-- Delete legacy dummy accounts if present
+DELETE FROM public.bbq_warriors_admin_users WHERE email IN ('admin@bbqwarriors.com', 'editor@bbqwarriors.com');
+
+-- Seed default Super Admin account
 INSERT INTO public.bbq_warriors_admin_users (email, name, password, role, status)
 VALUES 
-  ('admin@bbqwarriors.com', 'Super Admin', 'admin123', 'super_admin', 'active'),
-  ('editor@bbqwarriors.com', 'Content Editor', 'editor123', 'editor', 'active')
-ON CONFLICT (email) DO NOTHING;
+  ('ytstreamerscreatives@gmail.com', 'YT Streamers', 'admin123', 'super_admin', 'active')
+ON CONFLICT (email) DO UPDATE SET role = 'super_admin', status = 'active';

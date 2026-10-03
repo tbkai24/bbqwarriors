@@ -128,7 +128,7 @@ export default function AdminUsersPage() {
   };
 
   const handleDeleteUser = async (u: AdminUser) => {
-    if (u.email.toLowerCase() === 'admin@bbqwarriors.com') {
+    if (u.email.toLowerCase() === 'ytstreamerscreatives@gmail.com') {
       showToast('Cannot delete the primary Super Admin account.', 'rose');
       return;
     }
@@ -148,7 +148,7 @@ export default function AdminUsersPage() {
   const isEditingSuperAdmin = Boolean(
     editingUser && (
       editingUser.role === 'super_admin' ||
-      editingUser.email.toLowerCase() === 'admin@bbqwarriors.com' ||
+      editingUser.email.toLowerCase() === 'ytstreamerscreatives@gmail.com' ||
       (currentUser && (editingUser.id === currentUser.id || editingUser.email.toLowerCase() === currentUser.email.toLowerCase()))
     )
   );
@@ -314,7 +314,7 @@ export default function AdminUsersPage() {
                         <Edit className="w-3.5 h-3.5 text-slate-500" />
                         <span>Edit Role</span>
                       </button>
-                      {u.email.toLowerCase() !== 'admin@bbqwarriors.com' && !(currentUser && (u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase())) && (
+                      {u.email.toLowerCase() !== 'ytstreamerscreatives@gmail.com' && !(currentUser && (u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase())) && (
                         <button
                           onClick={() => handleDeleteUser(u)}
                           className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"

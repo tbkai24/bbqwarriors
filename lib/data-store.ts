@@ -1079,20 +1079,11 @@ const LOCAL_STORAGE_KEY_ACTIVE_USER = 'bbq_admin_active_user_v1';
 
 export const DEFAULT_ADMIN_USERS: AdminUser[] = [
   {
-    id: 'admin-super-001',
-    email: 'admin@bbqwarriors.com',
-    name: 'Super Admin',
+    id: 'a0000000-0000-0000-0000-000000000001',
+    email: 'ytstreamerscreatives@gmail.com',
+    name: 'YT Streamers',
     password: 'admin123',
     role: 'super_admin',
-    status: 'active',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'admin-editor-002',
-    email: 'editor@bbqwarriors.com',
-    name: 'Content Editor',
-    password: 'editor123',
-    role: 'editor',
     status: 'active',
     created_at: new Date().toISOString(),
   },
@@ -1106,7 +1097,7 @@ export function getStoredAdminUsers(): AdminUser[] {
       const parsed: AdminUser[] = JSON.parse(raw);
       if (parsed.length > 0) {
         return parsed.map(u => {
-          if (u.email && u.email.toLowerCase() === 'admin@bbqwarriors.com') {
+          if (u.email && u.email.toLowerCase() === 'ytstreamerscreatives@gmail.com') {
             return { ...u, role: 'super_admin', status: 'active' };
           }
           return u;
@@ -1122,7 +1113,7 @@ export function getStoredAdminUsers(): AdminUser[] {
 export function saveStoredAdminUsers(users: AdminUser[]) {
   if (typeof window !== 'undefined') {
     const sanitized = users.map(u => {
-      if (u.email && u.email.toLowerCase() === 'admin@bbqwarriors.com') {
+      if (u.email && u.email.toLowerCase() === 'ytstreamerscreatives@gmail.com') {
         return { ...u, role: 'super_admin' as AdminRole, status: 'active' as const };
       }
       return u;
@@ -1137,7 +1128,7 @@ export function getActiveAdminUser(): AdminUser {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_USER);
     if (raw) {
       const parsed: AdminUser = JSON.parse(raw);
-      if (parsed.email && parsed.email.toLowerCase() === 'admin@bbqwarriors.com') {
+      if (parsed.email && parsed.email.toLowerCase() === 'ytstreamerscreatives@gmail.com') {
         return { ...parsed, role: 'super_admin', status: 'active' };
       }
       return parsed;
@@ -1151,7 +1142,7 @@ export function getActiveAdminUser(): AdminUser {
 export function setActiveAdminUser(user: AdminUser | null) {
   if (typeof window === 'undefined') return;
   if (user) {
-    const cleanUser = user.email.toLowerCase() === 'admin@bbqwarriors.com' 
+    const cleanUser = user.email.toLowerCase() === 'ytstreamerscreatives@gmail.com' 
       ? { ...user, role: 'super_admin' as AdminRole, status: 'active' as const }
       : user;
     localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_USER, JSON.stringify(cleanUser));
@@ -1177,11 +1168,11 @@ export async function fetchAdminUsersFromSupabase(): Promise<AdminUser[]> {
     if (!error && data && data.length > 0) {
       const mapped = data.map((u: any) => {
         const email = (u.email || '').trim().toLowerCase();
-        const isPrimaryAdmin = email === 'admin@bbqwarriors.com';
+        const isPrimaryAdmin = email === 'ytstreamerscreatives@gmail.com';
         return {
           id: u.id,
           email,
-          name: u.name || (isPrimaryAdmin ? 'Super Admin' : 'Admin User'),
+          name: u.name || (isPrimaryAdmin ? 'YT Streamers' : 'Admin User'),
           password: u.password || 'admin123',
           role: isPrimaryAdmin ? 'super_admin' : ((u.role === 'super_admin' || u.role === 'editor') ? u.role : 'editor'),
           status: isPrimaryAdmin ? 'active' : (u.status || 'active'),
@@ -1201,15 +1192,15 @@ export async function fetchAdminUsersFromSupabase(): Promise<AdminUser[]> {
 export async function saveAdminUserToSupabase(user: Partial<AdminUser>): Promise<{ success: boolean; error?: string; data?: AdminUser }> {
   const users = getStoredAdminUsers();
   const cleanEmail = (user.email || '').trim().toLowerCase();
-  const isPrimaryAdmin = cleanEmail === 'admin@bbqwarriors.com';
+  const isPrimaryAdmin = cleanEmail === 'ytstreamerscreatives@gmail.com';
 
   const targetId = user.id;
-  const id = targetId || (isPrimaryAdmin ? 'admin-super-001' : generateUUID());
+  const id = targetId || (isPrimaryAdmin ? 'a0000000-0000-0000-0000-000000000001' : generateUUID());
 
   const fullUser: AdminUser = {
     id,
     email: cleanEmail,
-    name: (user.name || (isPrimaryAdmin ? 'Super Admin' : 'Admin User')).trim(),
+    name: (user.name || (isPrimaryAdmin ? 'YT Streamers' : 'Admin User')).trim(),
     password: user.password || 'admin123',
     role: isPrimaryAdmin ? 'super_admin' : (user.role || 'editor'),
     status: isPrimaryAdmin ? 'active' : (user.status || 'active'),
@@ -1313,11 +1304,11 @@ export async function authenticateAdminUser(emailInput: string, passwordInput: s
   }
 
   // 3. Fallback dynamically generated Super Admin or Editor for custom email
-  const isSuper = cleanEmail.includes('admin') || cleanEmail.includes('super');
+  const isSuper = cleanEmail === 'ytstreamerscreatives@gmail.com' || cleanEmail.includes('admin') || cleanEmail.includes('super');
   const fallbackUser: AdminUser = {
     id: `custom-admin-${Date.now()}`,
     email: cleanEmail,
-    name: cleanEmail.split('@')[0].toUpperCase(),
+    name: cleanEmail === 'ytstreamerscreatives@gmail.com' ? 'YT Streamers' : cleanEmail.split('@')[0].toUpperCase(),
     password: cleanPass,
     role: isSuper ? 'super_admin' : 'editor',
     status: 'active',

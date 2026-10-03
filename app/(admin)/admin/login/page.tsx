@@ -73,30 +73,19 @@ export default function AdminLoginPage() {
           {/* Preset Quick Login Buttons */}
           <div className="mb-5 p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
             <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-rose-600" /> Demo Admin & Role Credentials
+              <KeyRound className="w-3.5 h-3.5 text-rose-600" /> Admin Role Preset Credentials
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => handleSelectPreset('admin@bbqwarriors.com', 'admin123')}
-                className="p-2 rounded-xl bg-white border border-rose-200 hover:border-rose-400 text-left transition-all text-xs cursor-pointer shadow-2xs group"
+                onClick={() => handleSelectPreset('ytstreamerscreatives@gmail.com', 'admin123')}
+                className="p-2.5 rounded-xl bg-white border border-rose-200 hover:border-rose-400 text-left transition-all text-xs cursor-pointer shadow-2xs group"
               >
                 <div className="font-extrabold text-slate-900 group-hover:text-rose-600 flex items-center justify-between">
-                  <span>Super Admin</span>
+                  <span>YT Streamers (Super Admin)</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 font-bold">FULL</span>
                 </div>
-                <div className="text-[10px] text-slate-500 font-mono truncate">admin@bbqwarriors.com</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectPreset('editor@bbqwarriors.com', 'editor123')}
-                className="p-2 rounded-xl bg-white border border-blue-200 hover:border-blue-400 text-left transition-all text-xs cursor-pointer shadow-2xs group"
-              >
-                <div className="font-extrabold text-slate-900 group-hover:text-blue-600 flex items-center justify-between">
-                  <span>Content Editor</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 font-bold">EDIT</span>
-                </div>
-                <div className="text-[10px] text-slate-500 font-mono truncate">editor@bbqwarriors.com</div>
+                <div className="text-[10px] text-slate-500 font-mono truncate">ytstreamerscreatives@gmail.com</div>
               </button>
             </div>
           </div>
