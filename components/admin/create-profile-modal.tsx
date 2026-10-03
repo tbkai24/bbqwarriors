@@ -273,7 +273,7 @@ export function CreateProfileModal({ isOpen, onClose, onCreated }: CreateProfile
                 required
                 value={title}
                 onChange={(e) => handleTitleChange(e.target.value)}
-                placeholder="e.g. LAWLESS, DAM, GENTO"
+                placeholder="Enter title..."
                 className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 font-bold transition-all shadow-xs"
               />
             </div>
@@ -287,7 +287,7 @@ export function CreateProfileModal({ isOpen, onClose, onCreated }: CreateProfile
                 required
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
-                placeholder="lawless"
+                placeholder="Enter URL slug..."
                 className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 font-bold transition-all shadow-xs"
               />
             </div>
@@ -444,7 +444,7 @@ export function CreateProfileModal({ isOpen, onClose, onCreated }: CreateProfile
                         required
                         value={item.customName || ''}
                         onChange={(e) => handleUpdateSocial(item.id, 'customName', e.target.value)}
-                        placeholder="Platform Name (e.g. Weverse)"
+                        placeholder="Enter platform name..."
                         className="w-full sm:w-44 px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-600 shadow-xs"
                       />
                     )}

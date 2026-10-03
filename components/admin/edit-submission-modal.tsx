@@ -164,7 +164,7 @@ export function EditSubmissionModal({ submission, isOpen, onClose, onSaved }: Ed
               type="text"
               value={websiteName}
               onChange={(e) => setWebsiteName(e.target.value)}
-              placeholder="e.g. ABS-CBN News, Billboard Philippines"
+              placeholder="Enter publisher / platform source..."
               className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-600 shadow-xs"
             />
           </div>

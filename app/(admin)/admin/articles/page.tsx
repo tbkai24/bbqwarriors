@@ -885,7 +885,7 @@ export default function ArticlesAdminPage() {
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={activeProfile.profile_type === 'engagement' ? 'e.g. TikTok Dance Challenge' : 'Article Headline...'}
+                  placeholder="Enter title / headline..."
                   className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-600 shadow-xs"
                 />
               </div>
@@ -898,7 +898,7 @@ export default function ArticlesAdminPage() {
                   type="text"
                   value={websiteName}
                   onChange={(e) => setWebsiteName(e.target.value)}
-                  placeholder={activeProfile.profile_type === 'engagement' ? 'e.g. TikTok, Facebook, X (Twitter)' : 'e.g. Billboard Philippines, ABS-CBN News'}
+                  placeholder="Enter publisher / platform source..."
                   className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-rose-600 shadow-xs"
                 />
               </div>
@@ -937,7 +937,7 @@ export default function ArticlesAdminPage() {
                   rows={2}
                   value={highlightQuote}
                   onChange={(e) => setHighlightQuote(e.target.value)}
-                  placeholder='e.g. "SB19 shatters streaming records with breathtaking visuals in LAWLESS..."'
+                  placeholder="Enter highlight quote..."
                   className="w-full p-3 bg-amber-50/40 border border-amber-200 rounded-xl text-slate-900 text-xs font-semibold focus:outline-none focus:border-amber-500 shadow-xs resize-none"
                 />
               </div>

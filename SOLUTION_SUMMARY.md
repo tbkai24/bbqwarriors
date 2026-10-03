@@ -270,4 +270,9 @@ When rows were added manually in the Supabase Table Editor under `Role: postgres
 - **Default Masked Passwords**: Hidden by default (`••••••••` in table rows and `type="password"` in modal forms) to prevent accidental screen exposure in team environments.
 - **Interactive Eye/EyeOff Toggle Buttons**: Integrated Lucide `Eye` and `EyeOff` icons enabling Super Admins to toggle password visibility per user row and inside input fields when editing credentials.
 
+### 4. Super Admin Self-Demotion Safeguards & Generic Placeholders
+- **Self-Demotion & Self-Deactivation Protection**: Super Admins cannot demote their own account role to Content Editor or set their own active account to inactive, preventing accidental lockouts.
+- **Clean Generic Input Placeholders**: Replaced all specific example text across modals and input fields with clean, professional generic placeholders (`Enter full name...`, `Enter email address...`, `Enter title...`, `Enter publisher / platform source...`).
+
+
 

@@ -96,6 +96,17 @@ export default function AdminUsersPage() {
     if (!email.trim() || !name.trim()) return;
 
     setSubmitting(true);
+    if (isSelfEditingSuperAdmin && role === 'editor') {
+      showToast('Super Admins cannot demote their own account role.', 'rose');
+      setSubmitting(false);
+      return;
+    }
+    if (isSelfEditingSuperAdmin && status === 'inactive') {
+      showToast('You cannot deactivate your active Super Admin account.', 'rose');
+      setSubmitting(false);
+      return;
+    }
+
     const payload: Partial<AdminUser> = {
       id: editingUser ? editingUser.id : undefined,
       email: email.trim().toLowerCase(),
@@ -121,6 +132,10 @@ export default function AdminUsersPage() {
       showToast('Cannot delete the primary Super Admin account.', 'rose');
       return;
     }
+    if (currentUser && (u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase())) {
+      showToast('You cannot remove your own active account.', 'rose');
+      return;
+    }
 
     if (confirm(`Are you sure you want to remove ${u.name} (${u.email}) from team members?`)) {
       await deleteAdminUserFromSupabase(u.id);
@@ -130,6 +145,12 @@ export default function AdminUsersPage() {
   };
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
+  const isSelfEditingSuperAdmin = Boolean(
+    editingUser &&
+    currentUser &&
+    (editingUser.id === currentUser.id || editingUser.email.toLowerCase() === currentUser.email.toLowerCase()) &&
+    editingUser.role === 'super_admin'
+  );
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -292,7 +313,7 @@ export default function AdminUsersPage() {
                         <Edit className="w-3.5 h-3.5 text-slate-500" />
                         <span>Edit Role</span>
                       </button>
-                      {u.email.toLowerCase() !== 'admin@bbqwarriors.com' && (
+                      {u.email.toLowerCase() !== 'admin@bbqwarriors.com' && !(currentUser && (u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase())) && (
                         <button
                           onClick={() => handleDeleteUser(u)}
                           className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
@@ -337,7 +358,7 @@ export default function AdminUsersPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Maria Clara"
+                  placeholder="Enter full name..."
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:border-rose-500"
                 />
               </div>
@@ -351,7 +372,7 @@ export default function AdminUsersPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. editor@bbqwarriors.com"
+                  placeholder="Enter email address..."
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:border-rose-500"
                 />
               </div>
@@ -366,7 +387,7 @@ export default function AdminUsersPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter login password..."
+                    placeholder="Enter password..."
                     className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-900 font-bold focus:outline-none focus:border-rose-500"
                   />
                   <button
@@ -386,12 +407,20 @@ export default function AdminUsersPage() {
                 </label>
                 <select
                   value={role}
+                  disabled={isSelfEditingSuperAdmin}
                   onChange={(e) => setRole(e.target.value as AdminRole)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500 ${
+                    isSelfEditingSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
                 >
-                  <option value="editor">Content Editor (Manage Articles & Submissions)</option>
                   <option value="super_admin">Super Admin (Full System Access)</option>
+                  <option value="editor" disabled={isSelfEditingSuperAdmin}>Content Editor (Manage Articles & Submissions)</option>
                 </select>
+                {isSelfEditingSuperAdmin && (
+                  <p className="text-[10px] text-amber-600 font-semibold mt-1">
+                    * Super Admins cannot demote their own account role.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -400,12 +429,20 @@ export default function AdminUsersPage() {
                 </label>
                 <select
                   value={status}
+                  disabled={isSelfEditingSuperAdmin}
                   onChange={(e) => setStatus(e.target.value as 'active' | 'inactive')}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500 ${
+                    isSelfEditingSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
                 >
                   <option value="active">Active (Can Sign In)</option>
-                  <option value="inactive">Inactive (Disabled Access)</option>
+                  <option value="inactive" disabled={isSelfEditingSuperAdmin}>Inactive (Disabled Access)</option>
                 </select>
+                {isSelfEditingSuperAdmin && (
+                  <p className="text-[10px] text-amber-600 font-semibold mt-1">
+                    * You cannot deactivate your active Super Admin account.
+                  </p>
+                )}
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2">

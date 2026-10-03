@@ -326,7 +326,7 @@ export function SubmitModal({ profile, isOpen, onClose, onSuccess }: SubmitModal
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={isEngagement ? 'e.g. SB19 LAWLESS TikTok Dance Challenge' : 'Auto-suggested from link or type title...'}
+                placeholder="Enter title / headline..."
                 className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 text-xs font-bold transition-all shadow-xs"
               />
             </div>
@@ -366,7 +366,7 @@ export function SubmitModal({ profile, isOpen, onClose, onSuccess }: SubmitModal
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. Official campaign article with high-quality MV embed"
+                placeholder="Enter optional description or notes..."
                 className="w-full p-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 text-xs font-semibold transition-all shadow-xs resize-none"
               />
             </div>

@@ -308,7 +308,7 @@ export default function NotificationsAdminPage() {
               <label className="text-xs font-extrabold text-slate-700">Notification Title *</label>
               <input
                 type="text"
-                placeholder="e.g. 🔥 SB19 'LAWLESS' Music Video Out Now!"
+                placeholder="Enter notification title..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-rose-500 bg-slate-50/50"
@@ -336,7 +336,7 @@ export default function NotificationsAdminPage() {
             <label className="text-xs font-extrabold text-slate-700">Message Content *</label>
             <textarea
               rows={2}
-              placeholder="e.g. Stream the new MV on YouTube & Spotify now to help reach our 1M views goal!"
+              placeholder="Enter notification message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-rose-500 bg-slate-50/50"
@@ -355,7 +355,7 @@ export default function NotificationsAdminPage() {
                 <Link2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
-                  placeholder="e.g. /profile/sb19lawlessmvembeds"
+                  placeholder="Enter target link URL..."
                   value={targetUrl}
                   onChange={(e) => setTargetUrl(e.target.value)}
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-rose-500 bg-slate-50/50"
