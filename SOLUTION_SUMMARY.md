@@ -266,3 +266,8 @@ When rows were added manually in the Supabase Table Editor under `Role: postgres
 - **`Content Editor` Role**: Focused access to article additions, display ordering, and fan submission approvals.
 - **Team & Roles Management Panel (`app/(admin)/admin/users/page.tsx`)**: Allows Super Admins to add new team members, edit access roles, update passwords, and manage team accounts in real time.
 
+### 3. Password Privacy & Show/Hide Eye Toggle Controls
+- **Default Masked Passwords**: Hidden by default (`••••••••` in table rows and `type="password"` in modal forms) to prevent accidental screen exposure in team environments.
+- **Interactive Eye/EyeOff Toggle Buttons**: Integrated Lucide `Eye` and `EyeOff` icons enabling Super Admins to toggle password visibility per user row and inside input fields when editing credentials.
+
+

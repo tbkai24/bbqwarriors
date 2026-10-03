@@ -263,18 +263,22 @@ export default function AdminUsersPage() {
                       </div>
                       <div className="flex items-center gap-3 text-xs text-slate-500 font-medium mt-0.5">
                         <span className="font-mono">{u.email}</span>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <span>Password: <span className="font-mono text-slate-700 font-bold">{showPasswords[u.id] ? (u.password || '••••••••') : '••••••••'}</span></span>
-                          <button
-                            type="button"
-                            onClick={() => setShowPasswords(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
-                            className="p-0.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                            title={showPasswords[u.id] ? "Hide password" : "Show password"}
-                          >
-                            {showPasswords[u.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
+                        {isSuperAdmin && (
+                          <>
+                            <span>•</span>
+                            <div className="flex items-center gap-1">
+                              <span>Password: <span className="font-mono text-slate-700 font-bold">{showPasswords[u.id] ? (u.password || '••••••••') : '••••••••'}</span></span>
+                              <button
+                                type="button"
+                                onClick={() => setShowPasswords(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
+                                className="p-0.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                                title={showPasswords[u.id] ? "Hide password" : "Show password"}
+                              >
+                                {showPasswords[u.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
