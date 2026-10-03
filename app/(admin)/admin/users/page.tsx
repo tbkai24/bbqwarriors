@@ -96,13 +96,13 @@ export default function AdminUsersPage() {
     if (!email.trim() || !name.trim()) return;
 
     setSubmitting(true);
-    if (isSelfEditingSuperAdmin && role === 'editor') {
-      showToast('Super Admins cannot demote their own account role.', 'rose');
+    if (isEditingSuperAdmin && role === 'editor') {
+      showToast('Super Admin accounts cannot be demoted to Content Editor.', 'rose');
       setSubmitting(false);
       return;
     }
-    if (isSelfEditingSuperAdmin && status === 'inactive') {
-      showToast('You cannot deactivate your active Super Admin account.', 'rose');
+    if (isEditingSuperAdmin && status === 'inactive') {
+      showToast('Super Admin accounts cannot be set to Inactive.', 'rose');
       setSubmitting(false);
       return;
     }
@@ -145,11 +145,12 @@ export default function AdminUsersPage() {
   };
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
-  const isSelfEditingSuperAdmin = Boolean(
-    editingUser &&
-    currentUser &&
-    (editingUser.id === currentUser.id || editingUser.email.toLowerCase() === currentUser.email.toLowerCase()) &&
-    editingUser.role === 'super_admin'
+  const isEditingSuperAdmin = Boolean(
+    editingUser && (
+      editingUser.role === 'super_admin' ||
+      editingUser.email.toLowerCase() === 'admin@bbqwarriors.com' ||
+      (currentUser && (editingUser.id === currentUser.id || editingUser.email.toLowerCase() === currentUser.email.toLowerCase()))
+    )
   );
 
   return (
@@ -407,18 +408,18 @@ export default function AdminUsersPage() {
                 </label>
                 <select
                   value={role}
-                  disabled={isSelfEditingSuperAdmin}
+                  disabled={isEditingSuperAdmin}
                   onChange={(e) => setRole(e.target.value as AdminRole)}
                   className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500 ${
-                    isSelfEditingSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''
+                    isEditingSuperAdmin ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''
                   }`}
                 >
                   <option value="super_admin">Super Admin (Full System Access)</option>
-                  <option value="editor" disabled={isSelfEditingSuperAdmin}>Content Editor (Manage Articles & Submissions)</option>
+                  <option value="editor" disabled={isEditingSuperAdmin}>Content Editor (Manage Articles & Submissions)</option>
                 </select>
-                {isSelfEditingSuperAdmin && (
+                {isEditingSuperAdmin && (
                   <p className="text-[10px] text-amber-600 font-semibold mt-1">
-                    * Super Admins cannot demote their own account role.
+                    * Super Admin accounts cannot be demoted to Content Editor.
                   </p>
                 )}
               </div>
@@ -429,18 +430,18 @@ export default function AdminUsersPage() {
                 </label>
                 <select
                   value={status}
-                  disabled={isSelfEditingSuperAdmin}
+                  disabled={isEditingSuperAdmin}
                   onChange={(e) => setStatus(e.target.value as 'active' | 'inactive')}
                   className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500 ${
-                    isSelfEditingSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''
+                    isEditingSuperAdmin ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''
                   }`}
                 >
                   <option value="active">Active (Can Sign In)</option>
-                  <option value="inactive" disabled={isSelfEditingSuperAdmin}>Inactive (Disabled Access)</option>
+                  <option value="inactive" disabled={isEditingSuperAdmin}>Inactive (Disabled Access)</option>
                 </select>
-                {isSelfEditingSuperAdmin && (
+                {isEditingSuperAdmin && (
                   <p className="text-[10px] text-amber-600 font-semibold mt-1">
-                    * You cannot deactivate your active Super Admin account.
+                    * Super Admin accounts cannot be set to Inactive.
                   </p>
                 )}
               </div>
