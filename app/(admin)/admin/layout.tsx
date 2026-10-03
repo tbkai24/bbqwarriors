@@ -20,7 +20,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Profile, Article, ArticleSubmission } from '@/types/database';
+import { Profile, Article, ArticleSubmission, AdminUser } from '@/types/database';
 import {
   getStoredProfiles,
   getStoredArticles,
@@ -29,6 +29,8 @@ import {
   fetchArticlesFromSupabase,
   fetchSubmissionsFromSupabase,
   exportDataBackup,
+  getActiveAdminUser,
+  setActiveAdminUser,
 } from '@/lib/data-store';
 import { createClient } from '@/lib/supabase/client';
 import { ActiveProfileSwitcher } from '@/components/admin/active-profile-switcher';
@@ -49,6 +51,8 @@ import {
   Download,
   Heart,
   ShieldCheck,
+  Users,
+  UserCheck,
 } from 'lucide-react';
 
 interface AdminWorkspaceContextType {
@@ -59,6 +63,7 @@ interface AdminWorkspaceContextType {
   submissions: ArticleSubmission[];
   refreshData: () => void;
   openCreateModal: () => void;
+  currentUser: AdminUser;
 }
 
 const AdminWorkspaceContext = createContext<AdminWorkspaceContextType | null>(null);
@@ -84,6 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [articles, setArticles] = useState<Article[]>([]);
   const [submissions, setSubmissions] = useState<ArticleSubmission[]>([]);
+  const [currentUser, setCurrentUser] = useState<AdminUser>(getActiveAdminUser());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
@@ -95,6 +101,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     const checkAuthStatus = async () => {
+      const activeUser = getActiveAdminUser();
+      setCurrentUser(activeUser);
       const localSession = typeof window !== 'undefined' ? localStorage.getItem('sb19_admin_session') : null;
       if (localSession === 'authenticated') {
         setIsAuthenticated(true);
@@ -127,6 +135,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const loadAllData = async () => {
+    setCurrentUser(getActiveAdminUser());
     // 1. Initial local load
     const storedProfiles = getStoredProfiles();
     const storedArticles = getStoredArticles();
@@ -175,9 +184,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const handleLogout = async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('sb19_admin_session');
-    }
+    setActiveAdminUser(null);
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
@@ -202,10 +209,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     ? articles.filter(a => a.profile_id === activeProfile.id).length
     : 0;
 
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+
   const navItems = [
     { label: 'Overview', href: '/admin', icon: LayoutDashboard },
     { label: 'Articles', href: '/admin/articles', icon: FileText, badge: articleCount },
     { label: 'Submissions', href: '/admin/submissions', icon: Clock, badge: pendingCount, highlight: pendingCount > 0 },
+    { label: 'Team Roles & Users', href: '/admin/users', icon: Users },
     { label: 'Push Notifications', href: '/admin/notifications', icon: Bell },
     { label: 'Appearance', href: '/admin/appearance', icon: Palette },
     { label: 'SEO & Analytics', href: '/admin/analytics', icon: BarChart3 },
@@ -222,6 +232,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         submissions,
         refreshData: loadAllData,
         openCreateModal: () => setIsCreateOpen(true),
+        currentUser,
       }}
     >
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
@@ -251,8 +262,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             />
           </div>
 
-          {/* Right Action Bar */}
+          {/* Right Action Bar & User Role Pill */}
           <div className="flex items-center gap-2.5">
+            {/* User Session & Role Indicator */}
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200">
+              <div className="w-6 h-6 rounded-lg bg-rose-600 text-white font-extrabold text-[10px] flex items-center justify-center">
+                {currentUser?.name?.charAt(0) || 'A'}
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-extrabold text-slate-900 leading-tight">{currentUser?.name}</span>
+                <span className={`text-[9px] font-black uppercase tracking-wider ${isSuperAdmin ? 'text-rose-600' : 'text-blue-600'}`}>
+                  {isSuperAdmin ? 'Super Admin' : 'Content Editor'}
+                </span>
+              </div>
+            </div>
+
             {activeProfile && (
               <Link
                 href={`/profile/${activeProfile.slug}`}

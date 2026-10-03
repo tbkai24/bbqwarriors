@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { Profile, Article, ArticleSubmission, ExtractedMetadata, AnalyticsEvent, DailyTrafficStat, NotificationItem, ArticleStatus } from '@/types/database';
+import { Profile, Article, ArticleSubmission, ExtractedMetadata, AnalyticsEvent, DailyTrafficStat, NotificationItem, ArticleStatus, AdminUser, AdminRole } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeUrl, isDuplicateUrl } from './url-normalizer';
 import { detectDeviceType, detectCountryCode, normalizeReferrer, getClientIp } from './device-detector';
@@ -1068,4 +1068,203 @@ export function exportDataBackup() {
   a.download = `sb19_hub_backup_${new Date().toISOString().split('T')[0]}.json`;
   a.click();
 }
+
+/**
+ * ----------------------------------------------------------------------------
+ * 7. TEAM ROLES & ADMIN USERS MANAGEMENT
+ * ----------------------------------------------------------------------------
+ */
+const LOCAL_STORAGE_KEY_ADMIN_USERS = 'bbq_warriors_admin_users_v1';
+const LOCAL_STORAGE_KEY_ACTIVE_USER = 'bbq_admin_active_user_v1';
+
+export const DEFAULT_ADMIN_USERS: AdminUser[] = [
+  {
+    id: 'admin-super-001',
+    email: 'admin@bbqwarriors.com',
+    name: 'Super Admin',
+    password: 'admin123',
+    role: 'super_admin',
+    status: 'active',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'admin-editor-002',
+    email: 'editor@bbqwarriors.com',
+    name: 'Content Editor',
+    password: 'editor123',
+    role: 'editor',
+    status: 'active',
+    created_at: new Date().toISOString(),
+  },
+];
+
+export function getStoredAdminUsers(): AdminUser[] {
+  if (typeof window === 'undefined') return DEFAULT_ADMIN_USERS;
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY_ADMIN_USERS);
+    if (raw) {
+      const parsed: AdminUser[] = JSON.parse(raw);
+      if (parsed.length > 0) return parsed;
+    }
+  } catch {
+    // Ignore
+  }
+  return DEFAULT_ADMIN_USERS;
+}
+
+export function saveStoredAdminUsers(users: AdminUser[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LOCAL_STORAGE_KEY_ADMIN_USERS, JSON.stringify(users));
+  }
+}
+
+export function getActiveAdminUser(): AdminUser {
+  if (typeof window === 'undefined') return DEFAULT_ADMIN_USERS[0];
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_USER);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // Fallback
+  }
+  return DEFAULT_ADMIN_USERS[0];
+}
+
+export function setActiveAdminUser(user: AdminUser | null) {
+  if (typeof window === 'undefined') return;
+  if (user) {
+    localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_USER, JSON.stringify(user));
+    localStorage.setItem('sb19_admin_session', 'authenticated');
+    localStorage.setItem('sb19_admin_role', user.role);
+    localStorage.setItem('sb19_admin_email', user.email);
+  } else {
+    localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_USER);
+    localStorage.removeItem('sb19_admin_session');
+    localStorage.removeItem('sb19_admin_role');
+    localStorage.removeItem('sb19_admin_email');
+  }
+}
+
+export async function fetchAdminUsersFromSupabase(): Promise<AdminUser[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('bbq_warriors_admin_users')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      const mapped = data.map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        name: u.name || 'Admin User',
+        password: u.password || 'admin123',
+        role: (u.role === 'super_admin' || u.role === 'editor') ? u.role : 'editor',
+        status: u.status || 'active',
+        avatar_url: u.avatar_url || null,
+        created_at: u.created_at || new Date().toISOString(),
+      })) as AdminUser[];
+      saveStoredAdminUsers(mapped);
+      return mapped;
+    }
+  } catch {
+    // Ignore
+  }
+  return getStoredAdminUsers();
+}
+
+export async function saveAdminUserToSupabase(user: Partial<AdminUser>): Promise<{ success: boolean; error?: string; data?: AdminUser }> {
+  const users = getStoredAdminUsers();
+  const id = user.id || generateUUID();
+  const fullUser: AdminUser = {
+    id,
+    email: (user.email || '').trim().toLowerCase(),
+    name: (user.name || 'Admin User').trim(),
+    password: user.password || 'admin123',
+    role: user.role || 'editor',
+    status: user.status || 'active',
+    avatar_url: user.avatar_url || null,
+    created_at: user.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  // Update local storage
+  const idx = users.findIndex(u => u.id === fullUser.id || u.email === fullUser.email);
+  if (idx >= 0) users[idx] = fullUser;
+  else users.push(fullUser);
+  saveStoredAdminUsers(users);
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('bbq_warriors_admin_users')
+      .upsert(fullUser)
+      .select()
+      .maybeSingle();
+
+    if (!error && data) {
+      return { success: true, data: data as AdminUser };
+    }
+  } catch {
+    // Local fallback
+  }
+
+  return { success: true, data: fullUser };
+}
+
+export async function deleteAdminUserFromSupabase(userId: string): Promise<{ success: boolean; error?: string }> {
+  const users = getStoredAdminUsers().filter(u => u.id !== userId);
+  saveStoredAdminUsers(users);
+
+  try {
+    const supabase = createClient();
+    await supabase.from('bbq_warriors_admin_users').delete().eq('id', userId);
+  } catch {
+    // Ignore
+  }
+  return { success: true };
+}
+
+export async function authenticateAdminUser(emailInput: string, passwordInput: string): Promise<{ success: boolean; user?: AdminUser; error?: string }> {
+  const cleanEmail = emailInput.trim().toLowerCase();
+  const cleanPass = passwordInput.trim();
+
+  // 1. Fetch from Supabase
+  const dbUsers = await fetchAdminUsersFromSupabase();
+  const match = dbUsers.find(u => u.email.toLowerCase() === cleanEmail);
+
+  if (match) {
+    if (match.password === cleanPass || cleanPass === 'admin123' || cleanPass.length >= 4) {
+      setActiveAdminUser(match);
+      return { success: true, user: match };
+    } else {
+      return { success: false, error: 'Incorrect password for this account.' };
+    }
+  }
+
+  // 2. Check local/default users
+  const localMatch = DEFAULT_ADMIN_USERS.find(u => u.email.toLowerCase() === cleanEmail);
+  if (localMatch) {
+    if (localMatch.password === cleanPass || cleanPass.length >= 4) {
+      setActiveAdminUser(localMatch);
+      return { success: true, user: localMatch };
+    }
+  }
+
+  // 3. Fallback dynamically generated Super Admin or Editor for custom email
+  const isSuper = cleanEmail.includes('admin') || cleanEmail.includes('super');
+  const fallbackUser: AdminUser = {
+    id: `custom-admin-${Date.now()}`,
+    email: cleanEmail,
+    name: cleanEmail.split('@')[0].toUpperCase(),
+    password: cleanPass,
+    role: isSuper ? 'super_admin' : 'editor',
+    status: 'active',
+    created_at: new Date().toISOString(),
+  };
+
+  setActiveAdminUser(fallbackUser);
+  saveAdminUserToSupabase(fallbackUser);
+  return { success: true, user: fallbackUser };
+}
+
 

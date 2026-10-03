@@ -107,10 +107,24 @@ export interface DailyTrafficStat {
   updated_at: string;
 }
 
+export type AdminRole = 'super_admin' | 'editor';
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  password?: string;
+  role: AdminRole;
+  status: 'active' | 'inactive';
+  avatar_url?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface Admin {
   id: string;
   email: string;
-  role: 'superadmin' | 'admin';
+  role: 'superadmin' | 'admin' | 'super_admin' | 'editor';
   created_at: string;
 }
 

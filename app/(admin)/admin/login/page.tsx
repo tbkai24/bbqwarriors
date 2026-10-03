@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { authenticateAdminUser, setActiveAdminUser, DEFAULT_ADMIN_USERS } from '@/lib/data-store';
 import { BrandLogo } from '@/components/public/logo';
-import { Shield, Mail, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Shield, Mail, Lock, ArrowRight, AlertCircle, Eye, EyeOff, UserCheck, KeyRound } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -20,66 +20,31 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-
-      // 1. Attempt standard Supabase Auth
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password.trim(),
-      });
-
-      if (!authError && data?.session) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('sb19_admin_session', 'authenticated');
-          localStorage.setItem('sb19_admin_login_time', new Date().toISOString());
-        }
+      const res = await authenticateAdminUser(email, password);
+      if (res.success && res.user) {
         router.push('/admin');
         return;
       }
-
-      // 2. Fallback check if Supabase auth throws 'Failed to fetch', network error, or invalid credentials
-      // Allows local admin authorization so admin is never locked out
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanPass = password.trim();
-
-      if (
-        authError?.message === 'Failed to fetch' ||
-        authError?.message?.includes('fetch') ||
-        authError?.message?.includes('Invalid login') ||
-        cleanEmail.includes('admin') ||
-        cleanPass.length >= 4
-      ) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('sb19_admin_session', 'authenticated');
-          localStorage.setItem('sb19_admin_login_time', new Date().toISOString());
-        }
-        router.push('/admin');
-        return;
-      }
-
-      if (authError) {
-        throw new Error(authError.message || 'Invalid email or password credentials.');
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setError('Invalid login credentials.');
       }
     } catch (err: any) {
-      // Direct local authentication fallback on network error
-      if (err?.message === 'Failed to fetch' || err?.message?.includes('fetch') || email.trim()) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('sb19_admin_session', 'authenticated');
-          localStorage.setItem('sb19_admin_login_time', new Date().toISOString());
-        }
-        router.push('/admin');
-        return;
-      }
-      setError(err.message || 'Authentication failed. Please check your credentials.');
+      setError(err?.message || 'Authentication failed.');
+    } finally {
       setLoading(false);
     }
   };
 
+  const handleSelectPreset = (presetEmail: string, presetPass: string) => {
+    setEmail(presetEmail);
+    setPassword(presetPass);
+    setError('');
+  };
+
   const handleQuickDemoLogin = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('sb19_admin_session', 'authenticated');
-      localStorage.setItem('sb19_admin_login_time', new Date().toISOString());
-    }
+    setActiveAdminUser(DEFAULT_ADMIN_USERS[0]);
     router.push('/admin');
   };
 
@@ -99,10 +64,41 @@ export default function AdminLoginPage() {
             <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-3 shadow-xs">
               <Shield className="w-6 h-6" />
             </div>
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Admin Portal Access</h1>
+            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Admin & Team Portal</h1>
             <p className="text-xs text-slate-600 mt-1 font-medium">
-              Sign in with your authorized admin credentials to manage active profiles.
+              Sign in with your email, password, and assigned access role.
             </p>
+          </div>
+
+          {/* Preset Quick Login Buttons */}
+          <div className="mb-5 p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5 text-rose-600" /> Demo Admin & Role Credentials
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('admin@bbqwarriors.com', 'admin123')}
+                className="p-2 rounded-xl bg-white border border-rose-200 hover:border-rose-400 text-left transition-all text-xs cursor-pointer shadow-2xs group"
+              >
+                <div className="font-extrabold text-slate-900 group-hover:text-rose-600 flex items-center justify-between">
+                  <span>Super Admin</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 font-bold">FULL</span>
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono truncate">admin@bbqwarriors.com</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('editor@bbqwarriors.com', 'editor123')}
+                className="p-2 rounded-xl bg-white border border-blue-200 hover:border-blue-400 text-left transition-all text-xs cursor-pointer shadow-2xs group"
+              >
+                <div className="font-extrabold text-slate-900 group-hover:text-blue-600 flex items-center justify-between">
+                  <span>Content Editor</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 font-bold">EDIT</span>
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono truncate">editor@bbqwarriors.com</div>
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -157,10 +153,11 @@ export default function AdminLoginPage() {
               className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-50 mt-2 cursor-pointer"
             >
               {loading ? (
-                <span>Authenticating with Supabase...</span>
+                <span>Authenticating Credentials & Role...</span>
               ) : (
                 <>
-                  <span>Sign In & Authenticate</span>
+                  <UserCheck className="w-4 h-4" />
+                  <span>Sign In as Authorized User</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -172,7 +169,7 @@ export default function AdminLoginPage() {
               className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200 mt-2"
             >
               <Shield className="w-3.5 h-3.5 text-rose-600" />
-              <span>Instant Local Admin Login</span>
+              <span>Instant Super Admin Access</span>
             </button>
           </form>
         </div>

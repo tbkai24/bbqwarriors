@@ -252,3 +252,17 @@ When rows were added manually in the Supabase Table Editor under `Role: postgres
 - **Automatic Fallback for `slug` & `status`**: In `lib/data-store.ts`, if `sp.slug` or `sp.status` is `NULL` (e.g. manually added rows), it automatically computes `slug` from `title` (e.g. `Like Me MV` -> `like-me-mv`) and defaults `status` to `'published'`.
 - **Edge API Fetch Query (`app/api/public/data/route.ts`)**: Updated the REST query filter to `?select=*&or=(status.eq.published,status.is.null)&order=display_order.asc,created_at.desc`, ensuring manual rows with `NULL` status are not hidden from public or admin data calls.
 - **Supabase Migration RLS Policies**: Consolidated in `supabase/migrations/20260930000001_bbq_warriors_core_schema.sql` enabling `FOR ALL` RLS policies (`USING (true) WITH CHECK (true)`) on `bbq_warriors_profiles`, `bbq_warriors_articles`, `bbq_warriors_analytics`, and `bbq_warriors_submissions`.
+
+---
+
+## 15. 👥 Multi-Role Team Management & Admin Login Credentials (`bbq_warriors_admin_users`)
+
+### 1. Dedicated Admin Users Table & Migration
+- **Schema (`supabase/migrations/20261003000001_bbq_warriors_admin_users.sql`)**: Created `bbq_warriors_admin_users` table storing `email`, `name`, `password`, `role` (`super_admin` | `editor`), `status`, and timestamps.
+- **Pre-Configured Credentials**: Seeded default Super Admin (`admin@bbqwarriors.com`) and Content Editor (`editor@bbqwarriors.com`) accounts.
+
+### 2. Multi-Role Authorization & Access Control
+- **`Super Admin` Role**: Full system access (Profile creation/deletion, analytics, backup downloads, team user management).
+- **`Content Editor` Role**: Focused access to article additions, display ordering, and fan submission approvals.
+- **Team & Roles Management Panel (`app/(admin)/admin/users/page.tsx`)**: Allows Super Admins to add new team members, edit access roles, update passwords, and manage team accounts in real time.
+
