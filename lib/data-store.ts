@@ -1104,7 +1104,14 @@ export function getStoredAdminUsers(): AdminUser[] {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_ADMIN_USERS);
     if (raw) {
       const parsed: AdminUser[] = JSON.parse(raw);
-      if (parsed.length > 0) return parsed;
+      if (parsed.length > 0) {
+        return parsed.map(u => {
+          if (u.email && u.email.toLowerCase() === 'admin@bbqwarriors.com') {
+            return { ...u, role: 'super_admin', status: 'active' };
+          }
+          return u;
+        });
+      }
     }
   } catch {
     // Ignore
@@ -1114,7 +1121,13 @@ export function getStoredAdminUsers(): AdminUser[] {
 
 export function saveStoredAdminUsers(users: AdminUser[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(LOCAL_STORAGE_KEY_ADMIN_USERS, JSON.stringify(users));
+    const sanitized = users.map(u => {
+      if (u.email && u.email.toLowerCase() === 'admin@bbqwarriors.com') {
+        return { ...u, role: 'super_admin' as AdminRole, status: 'active' as const };
+      }
+      return u;
+    });
+    localStorage.setItem(LOCAL_STORAGE_KEY_ADMIN_USERS, JSON.stringify(sanitized));
   }
 }
 
@@ -1122,7 +1135,13 @@ export function getActiveAdminUser(): AdminUser {
   if (typeof window === 'undefined') return DEFAULT_ADMIN_USERS[0];
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_USER);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed: AdminUser = JSON.parse(raw);
+      if (parsed.email && parsed.email.toLowerCase() === 'admin@bbqwarriors.com') {
+        return { ...parsed, role: 'super_admin', status: 'active' };
+      }
+      return parsed;
+    }
   } catch {
     // Fallback
   }
@@ -1132,10 +1151,13 @@ export function getActiveAdminUser(): AdminUser {
 export function setActiveAdminUser(user: AdminUser | null) {
   if (typeof window === 'undefined') return;
   if (user) {
-    localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_USER, JSON.stringify(user));
+    const cleanUser = user.email.toLowerCase() === 'admin@bbqwarriors.com' 
+      ? { ...user, role: 'super_admin' as AdminRole, status: 'active' as const }
+      : user;
+    localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_USER, JSON.stringify(cleanUser));
     localStorage.setItem('sb19_admin_session', 'authenticated');
-    localStorage.setItem('sb19_admin_role', user.role);
-    localStorage.setItem('sb19_admin_email', user.email);
+    localStorage.setItem('sb19_admin_role', cleanUser.role);
+    localStorage.setItem('sb19_admin_email', cleanUser.email);
   } else {
     localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_USER);
     localStorage.removeItem('sb19_admin_session');
@@ -1153,16 +1175,20 @@ export async function fetchAdminUsersFromSupabase(): Promise<AdminUser[]> {
       .order('created_at', { ascending: true });
 
     if (!error && data && data.length > 0) {
-      const mapped = data.map((u: any) => ({
-        id: u.id,
-        email: u.email,
-        name: u.name || 'Admin User',
-        password: u.password || 'admin123',
-        role: (u.role === 'super_admin' || u.role === 'editor') ? u.role : 'editor',
-        status: u.status || 'active',
-        avatar_url: u.avatar_url || null,
-        created_at: u.created_at || new Date().toISOString(),
-      })) as AdminUser[];
+      const mapped = data.map((u: any) => {
+        const email = (u.email || '').trim().toLowerCase();
+        const isPrimaryAdmin = email === 'admin@bbqwarriors.com';
+        return {
+          id: u.id,
+          email,
+          name: u.name || (isPrimaryAdmin ? 'Super Admin' : 'Admin User'),
+          password: u.password || 'admin123',
+          role: isPrimaryAdmin ? 'super_admin' : ((u.role === 'super_admin' || u.role === 'editor') ? u.role : 'editor'),
+          status: isPrimaryAdmin ? 'active' : (u.status || 'active'),
+          avatar_url: u.avatar_url || null,
+          created_at: u.created_at || new Date().toISOString(),
+        };
+      }) as AdminUser[];
       saveStoredAdminUsers(mapped);
       return mapped;
     }
@@ -1174,30 +1200,66 @@ export async function fetchAdminUsersFromSupabase(): Promise<AdminUser[]> {
 
 export async function saveAdminUserToSupabase(user: Partial<AdminUser>): Promise<{ success: boolean; error?: string; data?: AdminUser }> {
   const users = getStoredAdminUsers();
-  const id = user.id || generateUUID();
+  const cleanEmail = (user.email || '').trim().toLowerCase();
+  const isPrimaryAdmin = cleanEmail === 'admin@bbqwarriors.com';
+
+  const targetId = user.id;
+  const id = targetId || (isPrimaryAdmin ? 'admin-super-001' : generateUUID());
+
   const fullUser: AdminUser = {
     id,
-    email: (user.email || '').trim().toLowerCase(),
-    name: (user.name || 'Admin User').trim(),
+    email: cleanEmail,
+    name: (user.name || (isPrimaryAdmin ? 'Super Admin' : 'Admin User')).trim(),
     password: user.password || 'admin123',
-    role: user.role || 'editor',
-    status: user.status || 'active',
+    role: isPrimaryAdmin ? 'super_admin' : (user.role || 'editor'),
+    status: isPrimaryAdmin ? 'active' : (user.status || 'active'),
     avatar_url: user.avatar_url || null,
     created_at: user.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 
-  // Update local storage
-  const idx = users.findIndex(u => u.id === fullUser.id || u.email === fullUser.email);
-  if (idx >= 0) users[idx] = fullUser;
-  else users.push(fullUser);
+  // Update local storage - match strictly by ID if provided, or by exact email
+  let idx = -1;
+  if (targetId) {
+    idx = users.findIndex(u => u.id === targetId);
+  }
+  if (idx < 0 && cleanEmail) {
+    idx = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+  }
+
+  if (idx >= 0) {
+    users[idx] = fullUser;
+  } else {
+    users.push(fullUser);
+  }
   saveStoredAdminUsers(users);
+
+  // If updating the active user session, keep session aligned
+  const activeUser = getActiveAdminUser();
+  if (activeUser && activeUser.email.toLowerCase() === cleanEmail) {
+    setActiveAdminUser(fullUser);
+  }
 
   try {
     const supabase = createClient();
+    const dbPayload: any = {
+      email: fullUser.email,
+      name: fullUser.name,
+      password: fullUser.password,
+      role: fullUser.role,
+      status: fullUser.status,
+      avatar_url: fullUser.avatar_url,
+      updated_at: fullUser.updated_at,
+    };
+
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fullUser.id);
+    if (isValidUUID) {
+      dbPayload.id = fullUser.id;
+    }
+
     const { data, error } = await supabase
       .from('bbq_warriors_admin_users')
-      .upsert(fullUser)
+      .upsert(dbPayload, { onConflict: 'email' })
       .select()
       .maybeSingle();
 
